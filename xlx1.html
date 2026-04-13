@@ -73,6 +73,10 @@ select.form-input { appearance: none; background-image: url("data:image/svg+xml,
 .search-input { padding: 10px 14px; font-size: 1rem; border-radius: 8px; border: 1px solid #ccc; width: 100%; box-sizing: border-box; margin-bottom: 8px; }
 .search-input:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 2px rgba(212,69,12,0.1); }
 
+/* 压缩空间的标题日期输入框 */
+.title-date-input { border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 0.85rem; font-family: inherit; background: #f8f9fa; color: var(--text-sub); outline: none; transition: border-color 0.2s; }
+.title-date-input:focus { border-color: var(--primary); background: #fff; color: var(--text); }
+
 .seg-group { display: flex; gap: 8px; flex-wrap: wrap; }
 .seg-btn { flex: 1; min-width: 0; padding: 10px 6px; border: 1.5px solid var(--border); border-radius: 8px; background: #fff; font-size: 0.95rem; font-weight: 500; color: var(--text-sub); cursor: pointer; text-align: center; }
 .seg-btn.active { border-color: var(--primary); background: var(--primary-dim); color: var(--primary); font-weight: 700; }
@@ -90,21 +94,22 @@ select.form-input { appearance: none; background-image: url("data:image/svg+xml,
 .btn-info { background: var(--info); color: #fff; }
 .btn-ghost { background: #f3f4f6; color: var(--text); }
 .btn-outline { background: transparent; border: 1.5px solid var(--primary); color: var(--primary); }
-.btn-sm { display: inline-block; width: auto; padding: 7px 14px; font-size: 0.85rem; border-radius: 7px; }
+.btn-sm { display: inline-block; width: auto; padding: 6px 12px; font-size: 0.85rem; border-radius: 6px; }
 
 /* ===== LISTS & TAGS ===== */
 .list { list-style: none; padding: 0; margin: 0; }
-.list-item { padding: 12px 0; border-bottom: 1px solid var(--border); transition: background-color 0.15s; }
+.list-item { padding: 14px 0; border-bottom: 1px solid var(--border); transition: background-color 0.15s; }
 .list-item.clickable:active { background-color: #f9fafb; border-radius: 6px; }
 .list-item:last-child { border-bottom: none; }
-.list-row { display: flex; justify-content: space-between; align-items: center; }
-.list-main { font-size: 1rem; font-weight: 700; }
-.list-sub { font-size: 0.82rem; color: var(--text-sub); margin-top: 4px; }
-.tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+.list-row { display: flex; justify-content: space-between; align-items: flex-start; }
+.list-main { font-size: 1rem; font-weight: 700; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
+.list-sub { font-size: 0.85rem; color: var(--text-sub); margin-top: 4px; line-height: 1.4; }
+.tag { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; }
 .tag-red { background: var(--danger-bg); color: var(--danger); }
 .tag-green { background: var(--success-bg); color: var(--success); }
 .tag-blue { background: var(--info-bg); color: var(--info); }
 .tag-gray { background: #f3f4f6; color: var(--text-sub); }
+.tag-orange { background: var(--warning-bg); color: var(--warning); }
 
 /* ===== TABS & ACCORDION ===== */
 .date-filter { display: flex; gap: 6px; margin-bottom: 12px; }
@@ -233,14 +238,16 @@ select.form-input { appearance: none; background-image: url("data:image/svg+xml,
 
 <div class="view" id="view-record">
   <div class="card">
-    <div class="card-title" style="color:var(--primary); display: flex; justify-content: space-between;">
-        <span>📥 散户收货</span>
-        <span id="record-edit-badge" style="display:none; font-size:0.8rem; background:var(--warning); color:#fff; padding:2px 8px; border-radius:10px;">✏️ 修改模式</span>
+    <div class="card-title" style="color:var(--primary); justify-content: space-between;">
+        <div style="display:flex; align-items:center; gap:8px;">
+            <span>📥 散户收货</span>
+            <span id="record-edit-badge" style="display:none; font-size:0.8rem; background:var(--warning); color:#fff; padding:2px 8px; border-radius:10px;">✏️ 修改模式</span>
+        </div>
+        <input type="date" class="title-date-input" id="r-date">
     </div>
     <input type="hidden" id="edit-record-id">
     <input type="hidden" id="edit-record-type">
     
-    <div class="form-group"><label class="form-label">日期</label><input type="date" class="form-input" id="r-date"></div>
     <div class="form-group">
       <label class="form-label">交货养殖户 (支持首字母检索)</label>
       <input type="text" class="search-input" id="r-farmer-search" placeholder="🔍 输入拼音(如zs)或姓名过滤" oninput="renderFarmerSelect(this.value)">
@@ -279,11 +286,13 @@ select.form-input { appearance: none; background-image: url("data:image/svg+xml,
   </div>
 
   <div class="card" id="card-expense-form">
-    <div class="card-title" style="color:var(--warning); display: flex; justify-content: space-between;">
-        <span>💸 记录杂费</span>
-        <span id="expense-edit-badge" style="display:none; font-size:0.8rem; background:var(--warning); color:#fff; padding:2px 8px; border-radius:10px;">✏️ 修改模式</span>
+    <div class="card-title" style="color:var(--warning); justify-content: space-between;">
+        <div style="display:flex; align-items:center; gap:8px;">
+            <span>💸 记录杂费</span>
+            <span id="expense-edit-badge" style="display:none; font-size:0.8rem; background:var(--warning); color:#fff; padding:2px 8px; border-radius:10px;">✏️ 修改模式</span>
+        </div>
+        <input type="date" class="title-date-input" id="e-date">
     </div>
-    <div class="form-group"><label class="form-label">日期</label><input type="date" class="form-input" id="e-date"></div>
     <div class="form-group">
       <label class="form-label">费用类别</label>
       <div class="seg-group" id="exp-cat-group" style="margin-bottom:8px;"></div>
@@ -300,11 +309,13 @@ select.form-input { appearance: none; background-image: url("data:image/svg+xml,
 
 <div class="view" id="view-dispatch">
   <div class="card" style="border-left:4px solid var(--primary);">
-    <div class="card-title" style="color:var(--primary); display: flex; justify-content: space-between;">
-        <span>🚚 发车交货单</span>
-        <span id="dispatch-edit-badge" style="display:none; font-size:0.8rem; background:var(--warning); color:#fff; padding:2px 8px; border-radius:10px;">✏️ 修改模式</span>
+    <div class="card-title" style="color:var(--primary); justify-content: space-between;">
+        <div style="display:flex; align-items:center; gap:8px;">
+            <span>🚚 发车交货单</span>
+            <span id="dispatch-edit-badge" style="display:none; font-size:0.8rem; background:var(--warning); color:#fff; padding:2px 8px; border-radius:10px;">✏️ 修改模式</span>
+        </div>
+        <input type="date" class="title-date-input" id="d-date">
     </div>
-    <div class="form-group"><label class="form-label">交货日期</label><input type="date" class="form-input" id="d-date"></div>
     <div class="form-group">
       <label class="form-label">
         <span>采购商 / 接收方</span>
@@ -339,8 +350,10 @@ select.form-input { appearance: none; background-image: url("data:image/svg+xml,
   </div>
 
   <div class="card" style="border-left:4px solid var(--success);" id="card-receipt-form">
-    <div class="card-title" style="color:var(--success);">💰 采购商打款单</div>
-    <div class="form-group"><label class="form-label">收款日期</label><input type="date" class="form-input" id="rec-date"></div>
+    <div class="card-title" style="color:var(--success); justify-content: space-between;">
+        <span>💰 采购商打款单</span>
+        <input type="date" class="title-date-input" id="rec-date">
+    </div>
     <div class="form-group"><label class="form-label">打款方 (自动同步采购商)</label><select class="form-input" id="rec-buyer"></select></div>
     <div class="form-group"><label class="form-label">收款金额 (元)</label><input type="number" inputmode="decimal" class="form-input" id="rec-amt" placeholder="输入收到金额"></div>
     <div class="form-group"><label class="form-label">备注 (选填)</label><input type="text" class="form-input" id="rec-remark"></div>
@@ -444,7 +457,7 @@ select.form-input { appearance: none; background-image: url("data:image/svg+xml,
 
 <script>
 // ========== CONSTANTS & STATE ==========
-const LOCAL_KEY = 'crawfish_ledger_data_v19';
+const LOCAL_KEY = 'crawfish_ledger_data_v20';
 const ROOM_ID   = 'anjin_room_001'; 
 const API_BASE  = 'https://sync.nekosensei.cn/';
 
@@ -473,7 +486,7 @@ let charts = {};
 let globalStart = '';
 let globalEnd = '';
 let lastSyncErrorStr = ''; 
-let editingRecordId = null; // 终极防护：保存当前正在编辑的记录ID
+let editingRecordId = null; 
 
 // ========== INIT & MIGRATION ==========
 window.onload = async () => {
@@ -483,7 +496,6 @@ window.onload = async () => {
   setRange('today'); 
   renderAll();
   
-  // 引入 ResizeObserver 解决图表切换延迟 (优化点 5)
   if (window.ResizeObserver) {
       const ro = new ResizeObserver(() => { Object.values(charts).forEach(c => c && c.resize()); });
       document.querySelectorAll('.view').forEach(v => ro.observe(v));
@@ -530,7 +542,17 @@ function getTs(dateStr) {
     return d.getTime();
 }
 
-// ========== CLOUD SYNC (原生标准 Fetch 强力兼容版) ==========
+// ========== CLOUD SYNC ==========
+const safeFetch = async (url, options = {}) => {
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('请求超时')), 8000));
+    const fetchPromise = fetch(url, {
+        ...options,
+        mode: 'cors',
+        headers: { 'Accept': 'application/json', ...(options.headers || {}) }
+    });
+    return Promise.race([fetchPromise, timeoutPromise]);
+};
+
 function setSyncStatus(state, label) { 
     const dot = document.getElementById('sync-dot');
     dot.className = 'sync-dot ' + state; 
@@ -540,7 +562,6 @@ function setSyncStatus(state, label) {
 function showSyncError() {
     const isOffline = document.getElementById('sync-dot').classList.contains('offline');
     if(isOffline) {
-        // 优化点 7：使用 Bottom Sheet 替代 Alert
         document.getElementById('sheet-title').textContent = `🔴 网络诊断信息`;
         document.getElementById('sheet-body').innerHTML = `
             <div style="background:#fdf0ee; color:var(--danger); padding:12px; border-radius:8px; margin-bottom:15px; font-size:0.9rem;">
@@ -563,7 +584,7 @@ function showSyncError() {
 async function pullCloud(force = false) {
     if(force) setSyncStatus('loading', '强制拉取...');
     try {
-        const res = await fetch(API_BASE + ROOM_ID);
+        const res = await safeFetch(API_BASE + ROOM_ID, { method: 'GET' });
         if (res.status === 404) { if(!force) await pushCloud(true); return; }
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const text = await res.text();
@@ -589,11 +610,7 @@ async function autoSync() { pullCloud(); }
 
 async function pushCloud(silent=false) {
   try {
-    const res = await fetch(API_BASE + ROOM_ID, { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify(DB) 
-    });
+    const res = await safeFetch(API_BASE + ROOM_ID, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(DB) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`); 
     setSyncStatus('online', '已同步');
     lastSyncErrorStr = '';
@@ -607,7 +624,7 @@ async function syncAfterChange() { saveLocal(); renderAll(); await pushCloud(tru
 // ========== ROUTING & TABS ==========
 function switchView(name) {
   if (editingRecordId && !confirm('当前有正在修改的记录，切换页面将丢失未保存的修改。确定切换吗？')) return;
-  cancelEditRecord(); // 清理残留状态
+  cancelEditRecord(); 
 
   document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
@@ -631,6 +648,16 @@ function switchSubTab(group, tab) {
 }
 function selectSeg(el, groupId) { document.querySelectorAll(`#${groupId} .seg-btn`).forEach(b => b.classList.remove('active')); el.classList.add('active'); }
 function getSegVal(groupId) { const b = document.querySelector(`#${groupId} .seg-btn.active`); return b ? b.getAttribute('data-val') : ''; }
+
+function toggleAccordion(id, el) {
+    const content = document.getElementById(id);
+    const icon = el.querySelector('.icon');
+    if (content.style.display === 'none') {
+        content.style.display = 'block'; icon.textContent = '▲';
+    } else {
+        content.style.display = 'none'; icon.textContent = '▼';
+    }
+}
 
 // ========== SETTINGS (FARMERS & ENTITIES) ==========
 function editFarmer(id) {
@@ -766,7 +793,7 @@ async function clearCloudData() {
 
     setSyncStatus('loading', '云端清空中...');
     try {
-        const res = await fetch(API_BASE + ROOM_ID, {
+        const res = await safeFetch(API_BASE + ROOM_ID, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(emptyDB)
@@ -868,7 +895,7 @@ function renderSettings() {
   document.getElementById('quick-prices').innerHTML = DB.quickPrices.map(p => `<div class="ptag" onclick="document.getElementById('r-price').value=${p}; calcAmount()">${p}</div>`).join('');
 }
 
-// ========== BUSINESS LOGIC (无损编辑引擎 - 优化点1 & 2) ==========
+// ========== BUSINESS LOGIC ==========
 function calcAmount() {
   const w = parseFloat(document.getElementById('r-weight').value)||0, p = parseFloat(document.getElementById('r-price').value)||0;
   const calcAmt = w&&p ? (w*p).toFixed(2) : '';
@@ -893,7 +920,6 @@ function submitPurchase() {
   const farmer = DB.farmers.find(f=>f.id===fid);
   if(!farmer) return showToast('找不到该养殖户', 'error');
   
-  // 定金防呆 (仅新增时核验)
   if(!editingRecordId && type === 'deposit') {
       const bal = getFarmerBalance(fid);
       if(bal < actualAmt) return showToast(`定金余额不足 (仅剩 ¥${Math.max(0, bal).toFixed(2)})`, 'error');
@@ -908,10 +934,8 @@ function submitPurchase() {
       showToast('✅ 修改已保存');
   } else {
       DB.purchases.push(record);
-      // 优化点 2：提交后重置下拉框
       document.getElementById('r-weight').value=''; document.getElementById('r-price').value=''; document.getElementById('r-amount').value=''; document.getElementById('r-actual-amount').value=''; document.getElementById('r-remark').value='';
-      document.getElementById('r-farmer-search').value = ''; 
-      document.getElementById('r-farmer').value = ''; // 强行重置
+      document.getElementById('r-farmer-search').value = ''; document.getElementById('r-farmer').value = '';
       showToast('✅ 收货已记录');
   }
   syncAfterChange(); 
@@ -975,7 +999,7 @@ function submitReceipt() {
   document.getElementById('rec-amt').value=''; document.getElementById('rec-remark').value=''; syncAfterChange(); showToast('✅ 收款已记录');
 }
 
-// ========== 安全回填修改引擎 ==========
+// ========== 回填修改引擎 ==========
 function editRecord(type, id) {
     if(editingRecordId) {
         if(!confirm('当前有未保存的修改，是否放弃并编辑新记录？')) return;
@@ -997,10 +1021,8 @@ function editRecord(type, id) {
         const btn = document.querySelector(`#pay-type-group .seg-btn[data-val="${r.payType}"]`);
         if(btn) selectSeg(btn, 'pay-type-group');
         
-        document.getElementById('btn-submit-purchase').innerText = '💾 保存修改';
-        document.getElementById('btn-submit-purchase').style.background = 'var(--info)';
-        document.getElementById('btn-cancel-purchase').style.display = 'block';
-        document.getElementById('record-edit-badge').style.display = 'inline-block';
+        document.getElementById('btn-submit-purchase').innerText = '💾 保存修改'; document.getElementById('btn-submit-purchase').style.background = 'var(--info)';
+        document.getElementById('btn-cancel-purchase').style.display = 'block'; document.getElementById('record-edit-badge').style.display = 'inline-block';
         switchView('record');
     } else if (type === 'd') {
         const r = DB.deliveries.find(x=>x.id===id); if(!r) return;
@@ -1015,10 +1037,8 @@ function editRecord(type, id) {
         document.getElementById('d-actual-amt').value = r.amount;
         document.getElementById('d-remark').value = r.remark;
         
-        document.getElementById('btn-submit-dispatch').innerText = '💾 保存修改';
-        document.getElementById('btn-submit-dispatch').style.background = 'var(--info)';
-        document.getElementById('btn-cancel-dispatch').style.display = 'block';
-        document.getElementById('dispatch-edit-badge').style.display = 'inline-block';
+        document.getElementById('btn-submit-dispatch').innerText = '💾 保存修改'; document.getElementById('btn-submit-dispatch').style.background = 'var(--info)';
+        document.getElementById('btn-cancel-dispatch').style.display = 'block'; document.getElementById('dispatch-edit-badge').style.display = 'inline-block';
         switchView('dispatch');
     } else if (type === 'e') {
         const r = DB.expenses.find(x=>x.id===id); if(!r) return;
@@ -1031,10 +1051,8 @@ function editRecord(type, id) {
         if(btn) selectSeg(btn, 'exp-cat-group');
         else if(document.getElementById('e-custom-cat')) document.getElementById('e-custom-cat').value = r.category;
         
-        document.getElementById('btn-submit-expense').innerText = '💾 保存修改';
-        document.getElementById('btn-submit-expense').style.background = 'var(--info)';
-        document.getElementById('btn-cancel-expense').style.display = 'block';
-        document.getElementById('expense-edit-badge').style.display = 'inline-block';
+        document.getElementById('btn-submit-expense').innerText = '💾 保存修改'; document.getElementById('btn-submit-expense').style.background = 'var(--info)';
+        document.getElementById('btn-cancel-expense').style.display = 'block'; document.getElementById('expense-edit-badge').style.display = 'inline-block';
         document.getElementById('card-expense-form').scrollIntoView();
         switchView('record');
     }
@@ -1042,20 +1060,16 @@ function editRecord(type, id) {
 }
 
 function cancelEditRecord() {
-    editingRecordId = null;
-    document.getElementById('edit-record-type').value = '';
+    editingRecordId = null; document.getElementById('edit-record-type').value = '';
     
-    // Reset Purchase Form
     document.getElementById('r-weight').value=''; document.getElementById('r-price').value=''; document.getElementById('r-amount').value=''; document.getElementById('r-actual-amount').value=''; document.getElementById('r-remark').value=''; document.getElementById('r-farmer').value = '';
     document.getElementById('btn-submit-purchase').innerText = '✅ 确认记录收货'; document.getElementById('btn-submit-purchase').style.background = 'var(--primary)';
     document.getElementById('btn-cancel-purchase').style.display = 'none'; document.getElementById('record-edit-badge').style.display = 'none';
     
-    // Reset Dispatch Form
     document.getElementById('d-send').value=''; document.getElementById('d-settle-w').value=''; document.getElementById('d-settle-price').value=''; document.getElementById('d-settle-amt').value=''; document.getElementById('d-actual-amt').value=''; document.getElementById('d-remark').value='';
     document.getElementById('btn-submit-dispatch').innerText = '📦 确认发车交货'; document.getElementById('btn-submit-dispatch').style.background = 'var(--primary)';
     document.getElementById('btn-cancel-dispatch').style.display = 'none'; document.getElementById('dispatch-edit-badge').style.display = 'none';
     
-    // Reset Expense Form
     document.getElementById('e-amount').value=''; document.getElementById('e-remark').value=''; if(document.getElementById('e-custom-cat')) document.getElementById('e-custom-cat').value='';
     document.getElementById('btn-submit-expense').innerText = '➖ 记入杂费'; document.getElementById('btn-submit-expense').style.background = 'var(--warning)';
     document.getElementById('btn-cancel-expense').style.display = 'none'; document.getElementById('expense-edit-badge').style.display = 'none';
@@ -1142,7 +1156,7 @@ function submitPayment(fid, fname) {
   closeSheet(); syncAfterChange(); showToast('✅ 付款已入账');
 }
 
-// ========== ECHARTS ENGINE (优化点 3 空状态保护) ==========
+// ========== ECHARTS ENGINE (空状态保护) ==========
 function initECharts() {
     if (typeof echarts === 'undefined') return false;
     const chartIds = ['chart-profit', 'chart-composition', 'chart-farmer', 'chart-price', 'chart-loss', 'chart-ar', 'chart-expense'];
@@ -1176,7 +1190,6 @@ function updateCharts(purchases, deliveries, expenses, receipts, startDate, endD
     const expsArr = dates.map(d => daily[d].exp.toFixed(2));
 
     const isEmptyData = purchases.length === 0 && deliveries.length === 0 && expenses.length === 0;
-
     const baseOption = { title: { show: isEmptyData, text: '该周期暂无数据', left: 'center', top: 'center', textStyle: { color: '#999', fontSize: 14, fontWeight: 'normal' } } };
 
     charts['chart-profit'].setOption({
@@ -1328,7 +1341,6 @@ function renderDataViews() {
 }
 
 function delH(t, id) { 
-    // 优化点 4：强力警告，防止删除产生孤立付款记录
     if (t === 'p') {
         const p = DB.purchases.find(x => x.id === id);
         if (p && p.payType === 'credit') {
@@ -1359,7 +1371,7 @@ function exportExcel() {
   XLSX.utils.book_append_sheet(wb, format(DB.expenses, ['日期','费用类别','金额(元)','备注'], x=>[x.date, x.category, x.amount, x.remark]), '杂费支出');
   XLSX.utils.book_append_sheet(wb, format([...DB.payments, ...DB.receipts].sort((a,b)=>a.ts-b.ts), ['日期','类型','对象','金额(元)','备注'], x=>[x.date, x.farmerName?'向散户付款':'收采购商货款', x.farmerName||x.buyerName, x.amount, x.remark]), '资金流水');
   
-  XLSX.writeFile(wb, `小龙虾账本_${todayStr()}.xlsx`); showToast('✅ 导出成功');
+  XLSX.writeFile(wb, `龙虾账本_${todayStr()}.xlsx`); showToast('✅ 导出成功');
 }
 </script>
 </body>
