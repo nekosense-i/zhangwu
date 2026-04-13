@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>小龙虾记账管家</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pinyin-pro@3.18.3/dist/index.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap');
+
+:root {
+  --primary: #D4450C; --primary-light: #FF6B35; --primary-dim: #fff0eb;
+  --success: #1a8a4a; --success-bg: #edfaf3;
+  --danger: #c0392b; --danger-bg: #fdf0ee;
+  --warning: #d97706; --warning-bg: #fffbeb;
+  --info: #1d6fa4; --info-bg: #eaf4fc;
+  --bg: #f2f3f5; --card: #ffffff;
+  --text: #1a1a1a; --text-sub: #6b7280;
+  --border: #e5e7eb; --radius: 14px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.07);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body { font-family: 'Noto Sans SC', -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 56px 0 72px; min-height: 100vh; }
+
+/* ===== TOP BAR ===== */
+.top-bar { position: fixed; top: 0; left: 0; right: 0; height: 56px; background: var(--primary); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; z-index: 200; }
+.top-bar-title { color: #fff; font-size: 1.15rem; font-weight: 900; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px; }
+.top-bar-right { display: flex; align-items: center; gap: 12px; }
+
+/* 同步指示灯 & 设置入口 */
+.sync-container { display: flex; align-items: center; gap: 6px; background: rgba(0,0,0,0.15); padding: 5px 12px; border-radius: 20px; cursor: pointer; transition: background 0.2s; }
+.sync-container:active { background: rgba(0,0,0,0.3); }
+.sync-dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 6px #4ade80; flex-shrink: 0; }
+.sync-dot.offline { background: #f87171; box-shadow: 0 0 6px #f87171; }
+.sync-dot.loading { background: #fbbf24; box-shadow: 0 0 6px #fbbf24; animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+.sync-label { color: #fff; font-size: 0.78rem; font-weight: 500; }
+
+.settings-icon { font-size: 1.3rem; color: #fff; cursor: pointer; transition: transform 0.2s; padding: 4px; }
+.settings-icon:active { transform: rotate(45deg); }
+
+/* ===== BOTTOM NAV ===== */
+.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 60px; background: #fff; display: flex; border-top: 1px solid var(--border); z-index: 200; padding-bottom: env(safe-area-inset-bottom); }
+.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 0.7rem; color: var(--text-sub); cursor: pointer; transition: color 0.15s; position: relative; }
+.nav-item.active { color: var(--primary); font-weight: 700; }
+.nav-item.active::after { content: ''; position: absolute; top: 0; left: 20%; right: 20%; height: 3px; background: var(--primary); border-radius: 0 0 3px 3px; }
+.nav-icon { font-size: 1.3rem; line-height: 1; }
+
+/* ===== VIEWS & CARDS ===== */
+.view { display: none; padding: 12px; animation: fadeUp 0.2s ease; }
+.view.active { display: block; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+
+.card { background: var(--card); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow); }
+.card-title { font-size: 1rem; font-weight: 700; margin: 0 0 14px; display: flex; align-items: center; gap: 8px; }
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.stat-card { background: var(--card); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); }
+.stat-card.full { grid-column: 1/-1; }
+.stat-label { font-size: 0.78rem; color: var(--text-sub); margin-bottom: 6px; }
+.stat-value { font-size: 1.5rem; font-weight: 900; line-height: 1; }
+.c-red { color: var(--danger); } .c-green { color: var(--success); } .c-orange { color: var(--warning); } .c-primary { color: var(--primary); }
+
+/* ===== FORMS & INPUTS ===== */
+.form-group { margin-bottom: 14px; }
+.form-label { display: flex; justify-content: space-between; align-items: center; font-size: 0.88rem; font-weight: 700; color: #444; margin-bottom: 6px; }
+.form-input { width: 100%; padding: 13px 14px; font-size: 1.1rem; border: 1.5px solid var(--border); border-radius: 10px; background: #fafafa; color: var(--text); box-sizing: border-box; }
+.form-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(212,69,12,0.12); background: #fff; }
+.form-input[readonly] { background: #f3f4f6; color: var(--text-sub); }
+select.form-input { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 40px; }
+.search-input { padding: 10px 14px; font-size: 1rem; border-radius: 8px; border: 1px solid #ccc; width: 100%; box-sizing: border-box; margin-bottom: 8px; }
+.search-input:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 2px rgba(212,69,12,0.1); }
+
+.seg-group { display: flex; gap: 8px; flex-wrap: wrap; }
+.seg-btn { flex: 1; min-width: 0; padding: 10px 6px; border: 1.5px solid var(--border); border-radius: 8px; background: #fff; font-size: 0.95rem; font-weight: 500; color: var(--text-sub); cursor: pointer; text-align: center; }
+.seg-btn.active { border-color: var(--primary); background: var(--primary-dim); color: var(--primary); font-weight: 700; }
+
+.price-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.ptag { padding: 8px 14px; background: #f3f4f6; border: 1.5px solid var(--border); border-radius: 20px; font-size: 1rem; cursor: pointer; }
+.ptag:active { background: var(--primary-dim); border-color: var(--primary); color: var(--primary); }
+
+/* ===== BUTTONS ===== */
+.btn { display: block; width: 100%; padding: 15px; font-size: 1.05rem; font-weight: 700; border: none; border-radius: 10px; cursor: pointer; text-align: center; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-success { background: var(--success); color: #fff; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-warning { background: var(--warning); color: #fff; }
+.btn-info { background: var(--info); color: #fff; }
+.btn-ghost { background: #f3f4f6; color: var(--text); }
+.btn-outline { background: transparent; border: 1.5px solid var(--primary); color: var(--primary); }
+.btn-sm { display: inline-block; width: auto; padding: 7px 14px; font-size: 0.85rem; border-radius: 7px; }
+
+/* ===== LISTS & TAGS ===== */
+.list { list-style: none; padding: 0; margin: 0; }
+.list-item { padding: 12px 0; border-bottom: 1px solid var(--border); transition: background-color 0.15s; }
+.list-item.clickable:active { background-color: #f9fafb; border-radius: 6px; }
+.list-item:last-child { border-bottom: none; }
+.list-row { display: flex; justify-content: space-between; align-items: center; }
+.list-main { font-size: 1rem; font-weight: 700; }
+.list-sub { font-size: 0.82rem; color: var(--text-sub); margin-top: 4px; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+.tag-red { background: var(--danger-bg); color: var(--danger); }
+.tag-green { background: var(--success-bg); color: var(--success); }
+.tag-blue { background: var(--info-bg); color: var(--info); }
+.tag-gray { background: #f3f4f6; color: var(--text-sub); }
+
+/* ===== TABS & ACCORDION ===== */
+.date-filter { display: flex; gap: 6px; margin-bottom: 12px; }
+.date-btn { padding: 7px 14px; border: 1.5px solid var(--border); border-radius: 20px; background: #fff; font-size: 0.85rem; color: var(--text-sub); cursor: pointer; }
+.date-btn.active { border-color: var(--primary); background: var(--primary-dim); color: var(--primary); font-weight: 700; }
+.date-range-row { display: flex; gap: 6px; align-items: center; }
+.date-range-row input { flex: 1; padding: 9px 10px; font-size: 0.9rem; border: 1.5px solid var(--border); border-radius: 8px; }
+
+.sub-tabs { display: flex; background: #f3f4f6; border-radius: 10px; padding: 4px; margin-bottom: 14px; gap: 4px; }
+.sub-tab { flex: 1; text-align: center; padding: 9px; font-size: 0.9rem; font-weight: 500; border-radius: 7px; cursor: pointer; color: var(--text-sub); }
+.sub-tab.active { background: #fff; color: var(--primary); font-weight: 700; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+
+.accordion-header { display: flex; justify-content: space-between; align-items: center; background: #f8f9fa; padding: 12px 16px; border-radius: 8px; font-weight: 700; color: var(--text); cursor: pointer; border: 1px solid var(--border); transition: background 0.15s; }
+.accordion-header:active { background: #eef0f2; }
+.accordion-content { border: 1px solid var(--border); border-top: none; border-radius: 0 0 8px 8px; padding: 12px; background: #fff; margin-top: -4px; }
+
+.empty { text-align: center; padding: 30px 20px; color: var(--text-sub); font-size: 0.95rem; }
+.toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%) translateY(-10px); background: rgba(26,26,26,0.95); color: #fff; padding: 12px 24px; border-radius: 24px; font-size: 0.95rem; z-index: 999; opacity: 0; transition: all 0.2s; pointer-events: none; text-align: center; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Charts */
+.chart-container { width: 100%; height: 260px; margin-top: 10px; }
+.chart-container-sm { width: 100%; height: 220px; margin-top: 10px; }
+.divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+/* Modal */
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 300; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+.overlay.show { opacity: 1; pointer-events: all; }
+.sheet { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-radius: 20px 20px 0 0; padding: 0 16px 32px; z-index: 301; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.32,0.72,0,1); max-height: 85vh; overflow-y: auto; }
+.sheet.show { transform: translateY(0); }
+.sheet-handle { width: 40px; height: 5px; background: #ddd; border-radius: 3px; margin: 12px auto 20px; }
+.sheet-title { font-size: 1.2rem; font-weight: 900; margin-bottom: 20px; text-align: center;}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="top-bar-title">🦞 小龙虾记账管家</div>
+  <div class="top-bar-right">
+    <div class="sync-container" onclick="showSyncError()">
+        <div class="sync-dot offline" id="sync-dot"></div>
+        <span class="sync-label" id="sync-label">未连接</span>
+    </div>
+    <div class="settings-icon" onclick="switchView('settings')">⚙️</div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<div class="view active" id="view-details">
+  <div class="card" style="padding:12px 14px;">
+    <div class="date-filter">
+      <button class="date-btn active" data-mode="today" onclick="setRange('today')">今日</button>
+      <button class="date-btn" data-mode="week" onclick="setRange('week')">本周</button>
+      <button class="date-btn" data-mode="month" onclick="setRange('month')">本月</button>
+    </div>
+    <div class="date-range-row">
+      <input type="date" id="date-start-det" onchange="onDateChange()"><span>至</span><input type="date" id="date-end-det" onchange="onDateChange()">
+    </div>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-card full" style="border-left: 4px solid var(--primary); background: #fff8f5;">
+      <div class="stat-label">📈 周期核算净利润 (实结金额口径)</div>
+      <div class="stat-value c-primary" id="d-profit">¥ 0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">📥 采购总成本</div>
+      <div class="stat-value c-red" id="d-cost">¥ 0</div>
+      <div style="font-size:0.8rem; color:var(--text-sub); margin-top:4px;" id="d-buy-w">0 斤</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">🚚 交货总收入</div>
+      <div class="stat-value c-green" id="d-income">¥ 0</div>
+      <div style="font-size:0.8rem; color:var(--text-sub); margin-top:4px;" id="d-sell-w">0 斤</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">💸 杂费开支</div>
+      <div class="stat-value c-orange" id="d-expense">¥ 0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">📉 平均损耗率</div>
+      <div class="stat-value" id="d-loss">—</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📋 账目流水明细</div>
+    <ul class="list" id="history-list"></ul>
+  </div>
+</div>
+
+<div class="view" id="view-analysis">
+  <div class="card" style="padding:12px 14px;">
+    <div class="date-filter">
+      <button class="date-btn active" data-mode="today" onclick="setRange('today')">今日</button>
+      <button class="date-btn" data-mode="week" onclick="setRange('week')">本周</button>
+      <button class="date-btn" data-mode="month" onclick="setRange('month')">本月</button>
+    </div>
+    <div class="date-range-row">
+      <input type="date" id="date-start-ana" onchange="onDateChange()"><span>至</span><input type="date" id="date-end-ana" onchange="onDateChange()">
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🔴 核心利润分析</div>
+    <div id="chart-profit" class="chart-container"></div>
+    <div class="divider"></div>
+    <div class="card-title">🔴 每日收支构成</div>
+    <div id="chart-composition" class="chart-container"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">🟡 供应链与损耗分析</div>
+    <div id="chart-farmer" class="chart-container-sm"></div>
+    <div class="divider"></div>
+    <div id="chart-price" class="chart-container-sm"></div>
+    <div class="divider"></div>
+    <div id="chart-loss" class="chart-container-sm"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">🟢 资金与杂费构成</div>
+    <div id="chart-ar" class="chart-container-sm"></div>
+    <div class="divider"></div>
+    <div id="chart-expense" class="chart-container-sm"></div>
+  </div>
+</div>
+
+<div class="view" id="view-record">
+  <div class="card">
+    <div class="card-title" style="color:var(--primary); display: flex; justify-content: space-between;">
+        <span>📥 散户收货</span>
+        <span id="record-edit-badge" style="display:none; font-size:0.8rem; background:var(--warning); color:#fff; padding:2px 8px; border-radius:10px;">✏️ 修改模式</span>
+    </div>
+    <input type="hidden" id="edit-record-id">
+    <input type="hidden" id="edit-record-type">
+    
+    <div class="form-group"><label class="form-label">日期</label><input type="date" class="form-input" id="r-date"></div>
+    <div class="form-group">
+      <label class="form-label">交货养殖户 (支持首字母检索)</label>
+      <input type="text" class="search-input" id="r-farmer-search" placeholder="🔍 输入拼音(如zs)或姓名过滤" oninput="renderFarmerSelect(this.value)">
+      <select class="form-input" id="r-farmer"></select>
+    </div>
+    <div style="display:flex; gap:10px;">
+      <div class="form-group" style="flex:1;"><label class="form-label">过磅重量 (斤)</label><input type="number" inputmode="decimal" class="form-input" id="r-weight" placeholder="0"></div>
+      <div class="form-group" style="flex:1;"><label class="form-label">单价 (元/斤)</label><input type="number" inputmode="decimal" step="0.1" class="form-input" id="r-price" placeholder="0.0" oninput="calcAmount()"></div>
+    </div>
+    <div class="price-tags" id="quick-prices"></div>
+    
+    <div style="display:flex; gap:10px;">
+        <div class="form-group" style="flex:1;">
+            <label class="form-label">账面应付 (元)</label>
+            <input type="text" class="form-input" id="r-amount" readonly placeholder="自动计算">
+        </div>
+        <div class="form-group" style="flex:1;">
+            <label class="form-label" style="color:var(--primary);">实际实付 (元)</label>
+            <input type="number" inputmode="decimal" class="form-input" id="r-actual-amount" placeholder="可修改抹零">
+        </div>
+    </div>
+    
+    <div class="form-group">
+      <label class="form-label">交易状态</label>
+      <div class="seg-group" id="pay-type-group">
+        <button class="seg-btn active" data-val="cash" onclick="selectSeg(this,'pay-type-group')">现结 (已付清)</button>
+        <button class="seg-btn" data-val="credit" onclick="selectSeg(this,'pay-type-group')">记赊账</button>
+        <button class="seg-btn" data-val="deposit" onclick="selectSeg(this,'pay-type-group')">扣定金</button>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">备注 (选填)</label><input type="text" class="form-input" id="r-remark"></div>
+    <div style="display:flex; gap:10px;">
+        <button class="btn btn-primary" id="btn-submit-purchase" style="flex:2;" onclick="submitPurchase()">✅ 确认记录收货</button>
+        <button class="btn btn-outline" id="btn-cancel-purchase" style="flex:1; display:none;" onclick="cancelEditRecord()">取消修改</button>
+    </div>
+  </div>
+
+  <div class="card" id="card-expense-form">
+    <div class="card-title" style="color:var(--warning); display: flex; justify-content: space-between;">
+        <span>💸 记录杂费</span>
+        <span id="expense-edit-badge" style="display:none; font-size:0.8rem; background:var(--warning); color:#fff; padding:2px 8px; border-radius:10px;">✏️ 修改模式</span>
+    </div>
+    <div class="form-group"><label class="form-label">日期</label><input type="date" class="form-input" id="e-date"></div>
+    <div class="form-group">
+      <label class="form-label">费用类别</label>
+      <div class="seg-group" id="exp-cat-group" style="margin-bottom:8px;"></div>
+      <input type="text" class="form-input" id="e-custom-cat" placeholder="或直接输入自定义新类别">
+    </div>
+    <div class="form-group"><label class="form-label">金额 (元)</label><input type="number" inputmode="decimal" class="form-input" id="e-amount" placeholder="0"></div>
+    <div class="form-group"><label class="form-label">备注 (选填)</label><input type="text" class="form-input" id="e-remark"></div>
+    <div style="display:flex; gap:10px;">
+        <button class="btn btn-warning" id="btn-submit-expense" style="flex:2;" onclick="submitExpense()">➖ 记入杂费</button>
+        <button class="btn btn-outline" id="btn-cancel-expense" style="flex:1; display:none;" onclick="cancelEditRecord()">取消修改</button>
+    </div>
+  </div>
+</div>
+
+<div class="view" id="view-dispatch">
+  <div class="card" style="border-left:4px solid var(--primary);">
+    <div class="card-title" style="color:var(--primary); display: flex; justify-content: space-between;">
+        <span>🚚 发车交货单</span>
+        <span id="dispatch-edit-badge" style="display:none; font-size:0.8rem; background:var(--warning); color:#fff; padding:2px 8px; border-radius:10px;">✏️ 修改模式</span>
+    </div>
+    <div class="form-group"><label class="form-label">交货日期</label><input type="date" class="form-input" id="d-date"></div>
+    <div class="form-group">
+      <label class="form-label">
+        <span>采购商 / 接收方</span>
+        <span style="font-size:0.8rem; color:var(--text-sub); display:flex; align-items:center; gap:4px;">
+          <input type="checkbox" id="d-lock-buyer" onchange="toggleDefaultBuyer()"> 锁定默认
+        </span>
+      </label>
+      <select class="form-input" id="d-buyer" onchange="checkDefaultBuyer()"></select>
+    </div>
+    <div class="form-group"><label class="form-label">我方发重 (斤)</label><input type="number" inputmode="decimal" class="form-input" id="d-send" placeholder="发货数"></div>
+    <div style="display:flex; gap:10px;">
+      <div class="form-group" style="flex:1;"><label class="form-label">结算重量 (斤)</label><input type="number" inputmode="decimal" class="form-input" id="d-settle-w" placeholder="过磅数" oninput="calcDispatchAmount()"></div>
+      <div class="form-group" style="flex:1;"><label class="form-label">结算单价 (元)</label><input type="number" inputmode="decimal" step="0.1" class="form-input" id="d-settle-price" placeholder="0.0" oninput="calcDispatchAmount()"></div>
+    </div>
+    
+    <div style="display:flex; gap:10px;">
+        <div class="form-group" style="flex:1;">
+            <label class="form-label">账面应收 (元)</label>
+            <input type="text" class="form-input" id="d-settle-amt" readonly placeholder="自动核算">
+        </div>
+        <div class="form-group" style="flex:1;">
+            <label class="form-label" style="color:var(--primary);">实际实收 (元)</label>
+            <input type="number" inputmode="decimal" class="form-input" id="d-actual-amt" placeholder="可修改抹零">
+        </div>
+    </div>
+
+    <div class="form-group"><label class="form-label">备注 (选填)</label><input type="text" class="form-input" id="d-remark" placeholder="如：被压级"></div>
+    <div style="display:flex; gap:10px;">
+        <button class="btn btn-primary" id="btn-submit-dispatch" style="flex:2;" onclick="submitDispatch()">📦 确认发车交货</button>
+        <button class="btn btn-outline" id="btn-cancel-dispatch" style="flex:1; display:none;" onclick="cancelEditRecord()">取消修改</button>
+    </div>
+  </div>
+
+  <div class="card" style="border-left:4px solid var(--success);" id="card-receipt-form">
+    <div class="card-title" style="color:var(--success);">💰 采购商打款单</div>
+    <div class="form-group"><label class="form-label">收款日期</label><input type="date" class="form-input" id="rec-date"></div>
+    <div class="form-group"><label class="form-label">打款方 (自动同步采购商)</label><select class="form-input" id="rec-buyer"></select></div>
+    <div class="form-group"><label class="form-label">收款金额 (元)</label><input type="number" inputmode="decimal" class="form-input" id="rec-amt" placeholder="输入收到金额"></div>
+    <div class="form-group"><label class="form-label">备注 (选填)</label><input type="text" class="form-input" id="rec-remark"></div>
+    <button class="btn btn-success" onclick="submitReceipt()">✅ 确认记录收款</button>
+  </div>
+</div>
+
+<div class="view" id="view-ledger">
+  <div class="sub-tabs">
+    <div class="sub-tab active" id="ltab-farmer" onclick="switchSubTab('ledger','farmer')">养殖户往来</div>
+    <div class="sub-tab" id="ltab-buyer" onclick="switchSubTab('ledger','buyer')">采购商往来</div>
+  </div>
+
+  <div id="lsub-farmer">
+    <div class="card">
+      <div class="card-title">🔴 我方欠款总额</div>
+      <div style="font-size:1.5rem;font-weight:900;color:var(--danger);" id="farmer-owe-total">¥ 0.00</div>
+      <div style="font-size:0.85rem;color:var(--text-sub);margin-top:6px;">正数(绿)代表我们存的定金，负数(红)代表我们欠的货款。<br>🔽 点击人员卡片可展开未结明细。</div>
+    </div>
+    <ul class="list" id="farmer-ledger-list" style="background:var(--card);border-radius:var(--radius);padding:0 16px;"></ul>
+  </div>
+
+  <div id="lsub-buyer" style="display:none;">
+    <div class="card">
+      <div class="card-title">💰 采购商未结欠款 (应收总额)</div>
+      <div style="font-size:1.5rem;font-weight:900;color:var(--warning);" id="buyer-owe-total">¥ 0.00</div>
+    </div>
+    <ul class="list" id="buyer-ledger-list" style="background:var(--card);border-radius:var(--radius);padding:0 16px;"></ul>
+  </div>
+</div>
+
+<div class="view" id="view-settings">
+  <div class="card" style="border-top:4px solid var(--primary);">
+    <div class="card-title">💾 数据安全与恢复</div>
+    <button class="btn btn-success" onclick="exportExcel()">📊 导出标准 Excel 账本</button>
+    <button class="btn btn-outline" style="margin-top:10px;" onclick="pullCloud(true)">⬇️ 从云端强制覆盖本机</button>
+    <div style="font-size:0.8rem;color:var(--text-sub);margin-top:8px;text-align:center;">随时导出账单数据或在换手机时恢复数据</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">👥 养殖户档案管理</div>
+    <input type="hidden" id="s-farmer-id"> 
+    <div class="form-group"><input type="text" class="form-input" id="s-farmer-name" placeholder="姓名 (必填，自动提取拼音)"></div>
+    <div class="form-group"><input type="tel" class="form-input" id="s-farmer-phone" placeholder="电话号码 (选填)"></div>
+    <div class="form-group"><input type="text" class="form-input" id="s-farmer-note" placeholder="其他备注信息 (选填)"></div>
+    <div style="display:flex; gap:10px; margin-bottom:14px;">
+        <button class="btn btn-primary" id="btn-save-farmer" onclick="saveFarmerProfile()" style="flex:2;">➕ 添加/更新 档案</button>
+        <button class="btn btn-outline" id="btn-cancel-farmer" onclick="cancelEditFarmer()" style="flex:1; display:none; padding:15px 0;">取消</button>
+    </div>
+    
+    <div class="accordion-header" onclick="toggleAccordion('farmer-list-container', this)">
+        <span>📋 展开已添加人员 (<span id="farmer-count">0</span>)</span>
+        <span class="icon">▼</span>
+    </div>
+    <div id="farmer-list-container" class="accordion-content" style="display: none;">
+        <input type="text" class="search-input" id="s-farmer-search" placeholder="🔍 输入拼音或姓名检索" oninput="renderSettingsFarmerList()">
+        <div style="font-size:0.8rem; color:var(--text-sub); margin-bottom:8px; text-align:center;">💡 点击人员可直接回填上方修改信息</div>
+        <ul class="list" id="set-farmer-list"></ul>
+    </div>
+  </div>
+  
+  <div class="card">
+    <div class="card-title">🏢 采购商档案</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;"><input type="text" class="form-input" id="s-buyer-name" placeholder="采购商名称" style="flex:1;"><button class="btn btn-outline btn-sm" onclick="addEntity('buyers', 's-buyer-name')">添加</button></div>
+    <ul class="list" id="set-buyer-list"></ul>
+  </div>
+
+  <div class="card">
+    <div class="card-title">💸 杂费项目预设</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;"><input type="text" class="form-input" id="s-exp-cat" placeholder="费用名称" style="flex:1;"><button class="btn btn-outline btn-sm" onclick="addEntity('expenseCategories', 's-exp-cat')">添加</button></div>
+    <div class="price-tags" id="set-exp-cat-list"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🏷️ 快捷单价预设</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;"><input type="number" inputmode="decimal" class="form-input" id="s-new-price" placeholder="如：12.5" style="flex:1;"><button class="btn btn-outline btn-sm" onclick="addPrice()">添加</button></div>
+    <div class="price-tags" id="set-price-list"></div>
+  </div>
+
+  <div class="card danger-zone" style="margin-top:30px;">
+    <div class="card-title" style="color:var(--danger); justify-content:center;">⚠️ 危险操作区域</div>
+    <button class="btn btn-ghost" style="color:var(--danger); border: 1px solid var(--danger);" onclick="clearLocalData()">📱 仅清空本机缓存</button>
+    <button class="btn btn-danger" style="margin-top:12px;" onclick="clearCloudData()">☁️ 彻底清空云端服务器数据</button>
+  </div>
+</div>
+
+<div class="bottom-nav">
+  <div class="nav-item active" id="nav-details" onclick="switchView('details')"><div class="nav-icon">🧾</div>明细</div>
+  <div class="nav-item" id="nav-analysis" onclick="switchView('analysis')"><div class="nav-icon">📈</div>分析</div>
+  <div class="nav-item" id="nav-record" onclick="switchView('record')"><div class="nav-icon">📥</div>收货</div>
+  <div class="nav-item" id="nav-dispatch" onclick="switchView('dispatch')"><div class="nav-icon">🚚</div>交货</div>
+  <div class="nav-item" id="nav-ledger" onclick="switchView('ledger')"><div class="nav-icon">📒</div>往来</div>
+</div>
+
+<div class="overlay" id="overlay" onclick="closeSheet()"></div>
+<div class="sheet" id="sheet-modal">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title" id="sheet-title">操作</div>
+  <div id="sheet-body"></div>
+</div>
+
+<script>
+// ========== CONSTANTS & STATE ==========
+const LOCAL_KEY = 'crawfish_ledger_data_v19';
+const ROOM_ID   = 'anjin_room_001'; 
+const API_BASE  = 'https://sync.nekosensei.cn/';
+
+// 百家姓多音字字典拦截
+const SURNAME_MAP = {
+    '曾':'z', '解':'x', '仇':'q', '单':'s', '查':'z', '区':'o',
+    '繁':'p', '朴':'p', '翟':'z', '折':'s', '黑':'h', '盖':'g',
+    '秘':'b', '冼':'x', '重':'c', '句':'g', '燕':'y', '尉':'y'
+};
+
+let DB = {
+  farmers: [],             
+  buyers: [],              
+  expenseCategories: [],   
+  quickPrices: [],         
+  defaultBuyerId: '',      
+  purchases: [],           
+  deliveries: [],          
+  payments: [],            
+  receipts: [],            
+  expenses: [],            
+  lastModified: 0
+};
+
+let charts = {};
+let globalStart = '';
+let globalEnd = '';
+let lastSyncErrorStr = ''; 
+let editingRecordId = null; // 终极防护：保存当前正在编辑的记录ID
+
+// ========== INIT & MIGRATION ==========
+window.onload = async () => {
+  loadLocal();
+  runMigration();
+  initDates();
+  setRange('today'); 
+  renderAll();
+  
+  // 引入 ResizeObserver 解决图表切换延迟 (优化点 5)
+  if (window.ResizeObserver) {
+      const ro = new ResizeObserver(() => { Object.values(charts).forEach(c => c && c.resize()); });
+      document.querySelectorAll('.view').forEach(v => ro.observe(v));
+  } else {
+      window.addEventListener('resize', () => { Object.values(charts).forEach(c => c && c.resize()); });
+  }
+
+  await autoSync();
+};
+
+function runMigration() {
+  if (!DB.expenseCategories || DB.expenseCategories.length === 0) DB.expenseCategories = ['搬运费', '运输费', '耗材', '其他'];
+  if (!DB.buyers || DB.buyers.length === 0) DB.buyers = [{ id: 'b_default', name: '安井' }];
+  if (DB.farmers && DB.farmers.length > 0) {
+    DB.farmers = DB.farmers.map(f => {
+      if (typeof f === 'string') return { id: uid(), name: f, py: '', phone: '', note: '' };
+      return { id: f.id, name: f.name, py: f.py||'', phone: f.phone||'', note: f.note||'' };
+    });
+  }
+  if (!DB.quickPrices || DB.quickPrices.length === 0) DB.quickPrices = [10, 12.5, 15];
+  if (!DB.payments) DB.payments = [];
+  if (DB.defaultBuyerId === undefined) DB.defaultBuyerId = '';
+}
+
+function loadLocal() { const s = localStorage.getItem(LOCAL_KEY); if (s) try { DB = { ...DB, ...JSON.parse(s) }; } catch(e) {} }
+function saveLocal() { DB.lastModified = Date.now(); localStorage.setItem(LOCAL_KEY, JSON.stringify(DB)); }
+function todayStr() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function p2(n) { return String(n).padStart(2,'0'); }
+function initDates() { 
+    const t = todayStr(); 
+    ['r-date','e-date','d-date','rec-date'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).value = t; }); 
+}
+function uid() { return 'id_' + Date.now() + Math.floor(Math.random()*1000); }
+function showToast(msg, type='info') { const t = document.getElementById('toast'); t.textContent = msg; t.style.background = type==='error'?'rgba(220,53,69,0.95)':'rgba(26,26,26,0.95)'; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
+function fmtMoney(v) { const abs = Math.abs(v); const str = abs >= 10000 ? (abs/10000).toFixed(2) + '万' : abs.toFixed(2); return (v < 0 ? '-¥' : '¥') + str; }
+
+function getTs(dateStr) {
+    if(!dateStr) return Date.now();
+    const parts = dateStr.split('-');
+    if(parts.length !== 3) return Date.now();
+    const d = new Date(parts[0], parts[1]-1, parts[2]); 
+    const n = new Date();
+    d.setHours(n.getHours(), n.getMinutes(), n.getSeconds(), n.getMilliseconds());
+    return d.getTime();
+}
+
+// ========== CLOUD SYNC (原生标准 Fetch 强力兼容版) ==========
+function setSyncStatus(state, label) { 
+    const dot = document.getElementById('sync-dot');
+    dot.className = 'sync-dot ' + state; 
+    document.getElementById('sync-label').textContent = label; 
+}
+
+function showSyncError() {
+    const isOffline = document.getElementById('sync-dot').classList.contains('offline');
+    if(isOffline) {
+        // 优化点 7：使用 Bottom Sheet 替代 Alert
+        document.getElementById('sheet-title').textContent = `🔴 网络诊断信息`;
+        document.getElementById('sheet-body').innerHTML = `
+            <div style="background:#fdf0ee; color:var(--danger); padding:12px; border-radius:8px; margin-bottom:15px; font-size:0.9rem;">
+                ${lastSyncErrorStr || '跨域被拦截或网络断开'}
+            </div>
+            <div style="font-weight:bold; margin-bottom:8px;">排查建议：</div>
+            <ul style="font-size:0.9rem; color:var(--text-sub); padding-left:20px; line-height:1.6;">
+                <li>检查手机是否连接网络(4G/WiFi)</li>
+                <li>您的服务器是否开启了 CORS 跨域白名单</li>
+                <li>API 接口是否正常运行</li>
+            </ul>
+            <button class="btn btn-outline" style="margin-top:20px;" onclick="closeSheet()">关闭</button>
+        `;
+        document.getElementById('overlay').classList.add('show'); document.getElementById('sheet-modal').classList.add('show');
+    } else {
+        showToast('🟢 云端同步正常');
+    }
+}
+
+async function pullCloud(force = false) {
+    if(force) setSyncStatus('loading', '强制拉取...');
+    try {
+        const res = await fetch(API_BASE + ROOM_ID);
+        if (res.status === 404) { if(!force) await pushCloud(true); return; }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const text = await res.text();
+        if (!text) { if(!force) await pushCloud(true); return; } 
+        
+        const cloud = JSON.parse(text);
+        if (force || (cloud && (cloud.lastModified || 0) > DB.lastModified)) { 
+            DB = { ...DB, ...cloud }; runMigration(); saveLocal(); renderAll(); 
+            if(force) showToast('✅ 成功覆盖本机数据');
+        } else if (cloud && (cloud.lastModified || 0) < DB.lastModified) {
+            if(!force) await pushCloud(true);
+        }
+        setSyncStatus('online', '已同步');
+        lastSyncErrorStr = '';
+    } catch(e) { 
+        lastSyncErrorStr = e.message || String(e);
+        setSyncStatus('offline', '离线模式'); 
+        if(force) showToast('❌ 拉取失败', 'error');
+    }
+}
+
+async function autoSync() { pullCloud(); }
+
+async function pushCloud(silent=false) {
+  try {
+    const res = await fetch(API_BASE + ROOM_ID, { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify(DB) 
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`); 
+    setSyncStatus('online', '已同步');
+    lastSyncErrorStr = '';
+  } catch(e) { 
+      lastSyncErrorStr = e.message || String(e);
+      setSyncStatus('offline', '离线缓存'); 
+  }
+}
+async function syncAfterChange() { saveLocal(); renderAll(); await pushCloud(true); }
+
+// ========== ROUTING & TABS ==========
+function switchView(name) {
+  if (editingRecordId && !confirm('当前有正在修改的记录，切换页面将丢失未保存的修改。确定切换吗？')) return;
+  cancelEditRecord(); // 清理残留状态
+
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  
+  document.getElementById('view-' + name).classList.add('active');
+  const navEl = document.getElementById('nav-' + name);
+  if (navEl) navEl.classList.add('active');
+  
+  initDates();
+  
+  if (name === 'record') {
+      document.getElementById('r-farmer-search').value = '';
+      renderFarmerSelect();
+  }
+}
+function switchSubTab(group, tab) {
+  if (group === 'ledger') {
+    document.getElementById('lsub-farmer').style.display = tab === 'farmer' ? '' : 'none'; document.getElementById('lsub-buyer').style.display = tab === 'buyer' ? '' : 'none';
+    document.getElementById('ltab-farmer').classList.toggle('active', tab === 'farmer'); document.getElementById('ltab-buyer').classList.toggle('active', tab === 'buyer');
+  }
+}
+function selectSeg(el, groupId) { document.querySelectorAll(`#${groupId} .seg-btn`).forEach(b => b.classList.remove('active')); el.classList.add('active'); }
+function getSegVal(groupId) { const b = document.querySelector(`#${groupId} .seg-btn.active`); return b ? b.getAttribute('data-val') : ''; }
+
+// ========== SETTINGS (FARMERS & ENTITIES) ==========
+function editFarmer(id) {
+    const f = DB.farmers.find(x => x.id === id);
+    if(!f) return;
+    document.getElementById('s-farmer-id').value = f.id;
+    document.getElementById('s-farmer-name').value = f.name;
+    document.getElementById('s-farmer-phone').value = f.phone || '';
+    document.getElementById('s-farmer-note').value = f.note || '';
+
+    const btnSave = document.getElementById('btn-save-farmer');
+    btnSave.innerText = '💾 保存修改'; btnSave.style.background = 'var(--info)';
+    document.getElementById('btn-cancel-farmer').style.display = 'block';
+    document.getElementById('view-settings').scrollIntoView({behavior: 'smooth'});
+}
+
+function cancelEditFarmer() {
+    document.getElementById('s-farmer-id').value = '';
+    document.getElementById('s-farmer-name').value = '';
+    document.getElementById('s-farmer-phone').value = '';
+    document.getElementById('s-farmer-note').value = '';
+    
+    const btnSave = document.getElementById('btn-save-farmer');
+    btnSave.innerText = '➕ 添加/更新 档案'; btnSave.style.background = 'var(--primary)';
+    document.getElementById('btn-cancel-farmer').style.display = 'none';
+}
+
+function saveFarmerProfile() {
+    const id = document.getElementById('s-farmer-id').value;
+    const name = document.getElementById('s-farmer-name').value.trim();
+    const phone = document.getElementById('s-farmer-phone').value.trim();
+    const note = document.getElementById('s-farmer-note').value.trim();
+
+    if(!name) return showToast('姓名不能为空', 'error');
+
+    let py = '';
+    try {
+        if (window.pinyinPro) {
+            py = window.pinyinPro.pinyin(name, { pattern: 'first', toneType: 'none' }).replace(/\s+/g, '').toLowerCase();
+            const firstChar = name.charAt(0);
+            if (SURNAME_MAP[firstChar]) py = SURNAME_MAP[firstChar] + py.substring(1);
+        }
+    } catch(e) { console.warn('拼音提取失败', e); }
+
+    if (id) {
+        const f = DB.farmers.find(x => x.id === id);
+        if (f) {
+            if (f.name !== name) {
+                DB.purchases.forEach(t => { if(t.farmerId === id) t.farmerName = name; });
+                DB.payments.forEach(t => { if(t.farmerId === id) t.farmerName = name; });
+            }
+            f.name = name; f.py = py || f.py; f.phone = phone; f.note = note;
+            showToast('档案已成功修改');
+        }
+    } else {
+        const existing = DB.farmers.find(f => f.name === name);
+        if (existing) {
+            existing.py = py || existing.py; existing.phone = phone || existing.phone; existing.note = note || existing.note;
+            showToast('已更新该人员信息');
+        } else {
+            DB.farmers.push({ id: uid(), name, py, phone, note });
+            showToast('添加成功');
+        }
+    }
+    cancelEditFarmer(); syncAfterChange();
+}
+
+function addEntity(listName, inputId) {
+  const name = document.getElementById(inputId).value.trim();
+  if(!name) return showToast('名称不能为空', 'error');
+  if(listName === 'expenseCategories') {
+    if(!DB[listName].includes(name)) DB[listName].push(name);
+  } else {
+    if(!DB[listName].find(x => x.name === name)) DB[listName].push({id: uid(), name});
+  }
+  document.getElementById(inputId).value = ''; syncAfterChange(); showToast('添加成功');
+}
+
+function delEntity(listName, idOrName) {
+  if(!confirm('确认删除？')) return;
+  if(listName === 'expenseCategories') {
+      DB[listName] = DB[listName].filter(x => x !== idOrName);
+  } else if(listName === 'farmers') {
+      const pCount = DB.purchases.filter(p => p.farmerId === idOrName).length;
+      const payCount = DB.payments.filter(p => p.farmerId === idOrName).length;
+      if (pCount > 0 || payCount > 0) {
+          alert(`⛔ 无法删除！\n\n该人员仍有关联的流水账未清空：\n· ${pCount} 笔收货记录\n· ${payCount} 笔付款记录\n\n为保证大盘数据一致性，请先在【明细】页面中将其彻底撤销。`);
+          return;
+      }
+      DB[listName] = DB[listName].filter(x => x.id !== idOrName);
+  } else {
+      const dCount = DB.deliveries.filter(d => d.buyerId === idOrName).length;
+      const rCount = DB.receipts.filter(r => r.buyerId === idOrName).length;
+      if (dCount > 0 || rCount > 0) {
+          alert(`⛔ 无法删除！\n\n该采购商仍有关联的流水账未清空：\n· ${dCount} 笔发车记录\n· ${rCount} 笔打款记录\n\n请先在【明细】页面中将其彻底撤销。`);
+          return;
+      }
+      DB[listName] = DB[listName].filter(x => x.id !== idOrName);
+      if (DB.defaultBuyerId === idOrName) DB.defaultBuyerId = '';
+  }
+  syncAfterChange();
+  showToast('✅ 已删除');
+}
+
+function addPrice() {
+  const p = parseFloat(document.getElementById('s-new-price').value);
+  if(p && !DB.quickPrices.includes(p)) { DB.quickPrices.push(p); DB.quickPrices.sort((a,b)=>a-b); syncAfterChange(); }
+  document.getElementById('s-new-price').value = '';
+}
+function delPrice(p) { DB.quickPrices = DB.quickPrices.filter(x => x !== p); syncAfterChange(); }
+
+// ========== 数据清空引擎 ==========
+function clearLocalData() { 
+    if(confirm('⚠️ 警告：将清空手机本地的所有数据！\n（云端数据不受影响，同步后可再次恢复）\n\n确认清空本机缓存？')) { 
+        localStorage.removeItem(LOCAL_KEY); 
+        location.reload(); 
+    } 
+}
+
+async function clearCloudData() {
+    if(!confirm('⚠️ 极度危险：将彻底清空【云端服务器】上的所有记录！\n清空后，所有使用此系统的设备都将丢失历史数据。\n\n确定要清空云端吗？')) return;
+    const pwd = prompt('为防止误操作，请输入 "确认清空" 四个字：');
+    if (pwd !== '确认清空') {
+        showToast('已取消操作'); return;
+    }
+
+    const emptyDB = {
+      farmers: [], buyers: [{ id: 'b_default', name: '安井' }],
+      expenseCategories: ['搬运费', '运输费', '耗材', '其他'], quickPrices: [10, 12.5, 15],
+      defaultBuyerId: '', purchases: [], deliveries: [], payments: [], receipts: [], expenses: [],
+      lastModified: Date.now() + 1000 
+    };
+
+    setSyncStatus('loading', '云端清空中...');
+    try {
+        const res = await fetch(API_BASE + ROOM_ID, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(emptyDB)
+        });
+        if (!res.ok) throw new Error();
+        
+        DB = emptyDB; saveLocal(); renderAll();
+        setSyncStatus('online', '已清空');
+        alert('✅ 云端及本机数据已全部清空！');
+    } catch(e) {
+        showToast('❌ 清空失败，请检查网络', 'error');
+        setSyncStatus('offline', '清空失败');
+    }
+}
+
+// ========== 智能下拉框 & 列表渲染 ==========
+function renderFarmerSelect(filterText = '') {
+    const sel = document.getElementById('r-farmer');
+    const ft = filterText.toLowerCase().trim();
+    const sortedFarmers = [...DB.farmers].sort((a,b) => a.name.localeCompare(b.name, 'zh-Hans-CN'));
+
+    let html = '<option value="" disabled selected>— 选择交货人 —</option>';
+    let matchCount = 0, firstMatchId = '';
+
+    sortedFarmers.forEach(f => {
+        const py = (f.py || '').toLowerCase();
+        if (!ft || py.includes(ft) || f.name.includes(ft)) {
+            html += `<option value="${f.id}">${f.name} ${f.phone ? '('+f.phone+')' : ''}</option>`;
+            matchCount++;
+            if (!firstMatchId) firstMatchId = f.id;
+        }
+    });
+
+    sel.innerHTML = html;
+    if (matchCount === 1 && ft) sel.value = firstMatchId;
+}
+
+function renderSettingsFarmerList() {
+    const ft = document.getElementById('s-farmer-search').value.toLowerCase().trim();
+    const listEl = document.getElementById('set-farmer-list');
+    const sortedFarmers = [...DB.farmers].sort((a,b) => a.name.localeCompare(b.name, 'zh-Hans-CN'));
+
+    let html = '', count = 0;
+    sortedFarmers.forEach(f => {
+        const py = (f.py || '').toLowerCase();
+        if (!ft || py.includes(ft) || f.name.includes(ft)) {
+            count++;
+            html += `
+            <li class="list-item clickable" onclick="editFarmer('${f.id}')" style="cursor:pointer;">
+                <div class="list-row">
+                    <div style="flex:1;">
+                        <div class="list-main">${f.name} ${f.py ? `<span class="tag tag-gray">${f.py}</span>` : ''}</div>
+                        <div class="list-sub">${f.phone ? '📞'+f.phone : '无电话'} ${f.note ? ' · '+f.note : ''}</div>
+                    </div>
+                    <button class="btn btn-ghost btn-sm" style="color:var(--danger);" onclick="event.stopPropagation(); delEntity('farmers','${f.id}')">删除</button>
+                </div>
+            </li>`;
+        }
+    });
+    listEl.innerHTML = html || '<div class="empty">无匹配的档案</div>';
+    document.getElementById('farmer-count').innerText = DB.farmers.length;
+}
+
+function toggleDefaultBuyer() {
+  const isChecked = document.getElementById('d-lock-buyer').checked;
+  const buyerId = document.getElementById('d-buyer').value;
+  if (isChecked && buyerId) { DB.defaultBuyerId = buyerId; showToast('已锁定该默认采购商'); } 
+  else { DB.defaultBuyerId = ''; showToast('已解除锁定'); }
+  syncAfterChange();
+}
+
+function checkDefaultBuyer() {
+  const isChecked = document.getElementById('d-lock-buyer').checked;
+  if (isChecked) { DB.defaultBuyerId = document.getElementById('d-buyer').value; syncAfterChange(); }
+  document.getElementById('rec-buyer').value = document.getElementById('d-buyer').value;
+}
+
+function renderSettings() {
+  renderSettingsFarmerList();
+  renderFarmerSelect();
+  
+  document.getElementById('set-buyer-list').innerHTML = DB.buyers.map(b => `<li class="list-item"><div class="list-row"><span>${b.name}</span><button class="btn btn-ghost btn-sm" onclick="delEntity('buyers','${b.id}')">删除</button></div></li>`).join('');
+  const bOpts = '<option value="" disabled selected>— 选择采购商 —</option>' + DB.buyers.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+  document.getElementById('d-buyer').innerHTML = bOpts; document.getElementById('rec-buyer').innerHTML = bOpts;
+  
+  if (DB.defaultBuyerId && DB.buyers.find(b => b.id === DB.defaultBuyerId)) {
+    document.getElementById('d-buyer').value = DB.defaultBuyerId; document.getElementById('rec-buyer').value = DB.defaultBuyerId; document.getElementById('d-lock-buyer').checked = true;
+  } else { document.getElementById('d-lock-buyer').checked = false; }
+
+  document.getElementById('set-exp-cat-list').innerHTML = DB.expenseCategories.map(c => `<div class="ptag" onclick="delEntity('expenseCategories','${c}')">${c} ✖</div>`).join('');
+  
+  let catHtml = '';
+  DB.expenseCategories.forEach((c,i) => {
+      catHtml += `<button class="seg-btn ${i===0?'active':''}" data-val="${c}" onclick="selectSeg(this,'exp-cat-group')">${c}</button>`;
+  });
+  document.getElementById('exp-cat-group').innerHTML = catHtml;
+  
+  document.getElementById('set-price-list').innerHTML = DB.quickPrices.map(p => `<div class="ptag" onclick="delPrice(${p})">${p} ✖</div>`).join('');
+  document.getElementById('quick-prices').innerHTML = DB.quickPrices.map(p => `<div class="ptag" onclick="document.getElementById('r-price').value=${p}; calcAmount()">${p}</div>`).join('');
+}
+
+// ========== BUSINESS LOGIC (无损编辑引擎 - 优化点1 & 2) ==========
+function calcAmount() {
+  const w = parseFloat(document.getElementById('r-weight').value)||0, p = parseFloat(document.getElementById('r-price').value)||0;
+  const calcAmt = w&&p ? (w*p).toFixed(2) : '';
+  document.getElementById('r-amount').value = calcAmt;
+  if (!editingRecordId) document.getElementById('r-actual-amount').value = calcAmt; 
+}
+function calcDispatchAmount() {
+  const w = parseFloat(document.getElementById('d-settle-w').value)||0, p = parseFloat(document.getElementById('d-settle-price').value)||0;
+  const calcAmt = w&&p ? (w*p).toFixed(2) : '';
+  document.getElementById('d-settle-amt').value = calcAmt;
+  if (!editingRecordId) document.getElementById('d-actual-amt').value = calcAmt; 
+}
+
+function submitPurchase() {
+  const d = document.getElementById('r-date').value, fid = document.getElementById('r-farmer').value;
+  const w = parseFloat(document.getElementById('r-weight').value), p = parseFloat(document.getElementById('r-price').value);
+  const calcAmt = parseFloat(document.getElementById('r-amount').value) || 0;
+  const actualAmt = parseFloat(document.getElementById('r-actual-amount').value);
+  const type = getSegVal('pay-type-group'), remark = document.getElementById('r-remark').value.trim();
+  
+  if(!d || !fid || !w || !p || isNaN(actualAmt)) return showToast('信息不全，请检查下拉框是否选中', 'error');
+  const farmer = DB.farmers.find(f=>f.id===fid);
+  if(!farmer) return showToast('找不到该养殖户', 'error');
+  
+  // 定金防呆 (仅新增时核验)
+  if(!editingRecordId && type === 'deposit') {
+      const bal = getFarmerBalance(fid);
+      if(bal < actualAmt) return showToast(`定金余额不足 (仅剩 ¥${Math.max(0, bal).toFixed(2)})`, 'error');
+  }
+
+  const record = { id: editingRecordId || uid(), date:d, farmerId:fid, farmerName:farmer.name, weight:w, price:p, calcAmount:calcAmt, amount:actualAmt, payType:type, remark, ts:getTs(d) };
+  
+  if (editingRecordId && document.getElementById('edit-record-type').value === 'p') {
+      const idx = DB.purchases.findIndex(x => x.id === editingRecordId);
+      if (idx > -1) DB.purchases[idx] = record;
+      cancelEditRecord();
+      showToast('✅ 修改已保存');
+  } else {
+      DB.purchases.push(record);
+      // 优化点 2：提交后重置下拉框
+      document.getElementById('r-weight').value=''; document.getElementById('r-price').value=''; document.getElementById('r-amount').value=''; document.getElementById('r-actual-amount').value=''; document.getElementById('r-remark').value='';
+      document.getElementById('r-farmer-search').value = ''; 
+      document.getElementById('r-farmer').value = ''; // 强行重置
+      showToast('✅ 收货已记录');
+  }
+  syncAfterChange(); 
+}
+
+function submitExpense() {
+  const d = document.getElementById('e-date').value;
+  const segVal = getSegVal('exp-cat-group');
+  const customVal = document.getElementById('e-custom-cat') ? document.getElementById('e-custom-cat').value.trim() : '';
+  const c = customVal || segVal;
+  const amt = parseFloat(document.getElementById('e-amount').value);
+  const rem = document.getElementById('e-remark').value.trim();
+  
+  if(!d || !c || !amt) return showToast('信息不全', 'error');
+  if(customVal && !DB.expenseCategories.includes(customVal)) DB.expenseCategories.push(customVal);
+  
+  const record = { id: editingRecordId || uid(), date:d, category:c, amount:amt, remark:rem, ts:getTs(d) };
+
+  if (editingRecordId && document.getElementById('edit-record-type').value === 'e') {
+      const idx = DB.expenses.findIndex(x => x.id === editingRecordId);
+      if (idx > -1) DB.expenses[idx] = record;
+      cancelEditRecord();
+      showToast('✅ 修改已保存');
+  } else {
+      DB.expenses.push(record);
+      document.getElementById('e-amount').value=''; document.getElementById('e-remark').value=''; 
+      if(document.getElementById('e-custom-cat')) document.getElementById('e-custom-cat').value='';
+      showToast('✅ 杂费已记录');
+  }
+  syncAfterChange(); 
+}
+
+function submitDispatch() {
+  const d = document.getElementById('d-date').value, bid = document.getElementById('d-buyer').value;
+  const sw = parseFloat(document.getElementById('d-send').value), aw = parseFloat(document.getElementById('d-settle-w').value), p = parseFloat(document.getElementById('d-settle-price').value);
+  const calcAmt = parseFloat(document.getElementById('d-settle-amt').value) || 0;
+  const actualAmt = parseFloat(document.getElementById('d-actual-amt').value);
+  const rem = document.getElementById('d-remark').value.trim();
+  
+  if(!d || !bid || !sw || !aw || !p || isNaN(actualAmt)) return showToast('交货信息不全', 'error');
+  
+  const record = { id: editingRecordId || uid(), date:d, buyerId:bid, buyerName:DB.buyers.find(b=>b.id===bid).name, sendWeight:sw, settleWeight:aw, settlePrice:p, calcAmount:calcAmt, amount:actualAmt, remark:rem, ts:getTs(d) };
+
+  if (editingRecordId && document.getElementById('edit-record-type').value === 'd') {
+      const idx = DB.deliveries.findIndex(x => x.id === editingRecordId);
+      if (idx > -1) DB.deliveries[idx] = record;
+      cancelEditRecord();
+      showToast('✅ 修改已保存');
+  } else {
+      DB.deliveries.push(record);
+      document.getElementById('d-send').value=''; document.getElementById('d-settle-w').value=''; document.getElementById('d-settle-price').value=''; document.getElementById('d-settle-amt').value=''; document.getElementById('d-actual-amt').value=''; document.getElementById('d-remark').value='';
+      showToast('✅ 发车已记录');
+  }
+  syncAfterChange(); 
+}
+
+function submitReceipt() {
+  const d = document.getElementById('rec-date').value, bid = document.getElementById('rec-buyer').value, amt = parseFloat(document.getElementById('rec-amt').value), rem = document.getElementById('rec-remark').value.trim();
+  if(!d || !bid || !amt) return showToast('打款信息不全', 'error');
+  DB.receipts.push({ id:uid(), date:d, buyerId:bid, buyerName:DB.buyers.find(b=>b.id===bid).name, amount:amt, remark:rem, ts:getTs(d) });
+  document.getElementById('rec-amt').value=''; document.getElementById('rec-remark').value=''; syncAfterChange(); showToast('✅ 收款已记录');
+}
+
+// ========== 安全回填修改引擎 ==========
+function editRecord(type, id) {
+    if(editingRecordId) {
+        if(!confirm('当前有未保存的修改，是否放弃并编辑新记录？')) return;
+        cancelEditRecord();
+    }
+    
+    if(type === 'p') {
+        const r = DB.purchases.find(x=>x.id===id); if(!r) return;
+        document.getElementById('edit-record-type').value = 'p';
+        editingRecordId = id;
+        document.getElementById('r-date').value = r.date;
+        document.getElementById('r-farmer-search').value = ''; renderFarmerSelect();
+        document.getElementById('r-farmer').value = r.farmerId;
+        document.getElementById('r-weight').value = r.weight;
+        document.getElementById('r-price').value = r.price;
+        document.getElementById('r-amount').value = r.calcAmount ? r.calcAmount.toFixed(2) : (r.weight * r.price).toFixed(2);
+        document.getElementById('r-actual-amount').value = r.amount;
+        document.getElementById('r-remark').value = r.remark;
+        const btn = document.querySelector(`#pay-type-group .seg-btn[data-val="${r.payType}"]`);
+        if(btn) selectSeg(btn, 'pay-type-group');
+        
+        document.getElementById('btn-submit-purchase').innerText = '💾 保存修改';
+        document.getElementById('btn-submit-purchase').style.background = 'var(--info)';
+        document.getElementById('btn-cancel-purchase').style.display = 'block';
+        document.getElementById('record-edit-badge').style.display = 'inline-block';
+        switchView('record');
+    } else if (type === 'd') {
+        const r = DB.deliveries.find(x=>x.id===id); if(!r) return;
+        document.getElementById('edit-record-type').value = 'd';
+        editingRecordId = id;
+        document.getElementById('d-date').value = r.date;
+        document.getElementById('d-buyer').value = r.buyerId;
+        document.getElementById('d-send').value = r.sendWeight;
+        document.getElementById('d-settle-w').value = r.settleWeight;
+        document.getElementById('d-settle-price').value = r.settlePrice || '';
+        document.getElementById('d-settle-amt').value = r.calcAmount ? r.calcAmount.toFixed(2) : (r.settleWeight * r.settlePrice).toFixed(2);
+        document.getElementById('d-actual-amt').value = r.amount;
+        document.getElementById('d-remark').value = r.remark;
+        
+        document.getElementById('btn-submit-dispatch').innerText = '💾 保存修改';
+        document.getElementById('btn-submit-dispatch').style.background = 'var(--info)';
+        document.getElementById('btn-cancel-dispatch').style.display = 'block';
+        document.getElementById('dispatch-edit-badge').style.display = 'inline-block';
+        switchView('dispatch');
+    } else if (type === 'e') {
+        const r = DB.expenses.find(x=>x.id===id); if(!r) return;
+        document.getElementById('edit-record-type').value = 'e';
+        editingRecordId = id;
+        document.getElementById('e-date').value = r.date;
+        document.getElementById('e-amount').value = r.amount;
+        document.getElementById('e-remark').value = r.remark;
+        const btn = document.querySelector(`#exp-cat-group .seg-btn[data-val="${r.category}"]`);
+        if(btn) selectSeg(btn, 'exp-cat-group');
+        else if(document.getElementById('e-custom-cat')) document.getElementById('e-custom-cat').value = r.category;
+        
+        document.getElementById('btn-submit-expense').innerText = '💾 保存修改';
+        document.getElementById('btn-submit-expense').style.background = 'var(--info)';
+        document.getElementById('btn-cancel-expense').style.display = 'block';
+        document.getElementById('expense-edit-badge').style.display = 'inline-block';
+        document.getElementById('card-expense-form').scrollIntoView();
+        switchView('record');
+    }
+    showToast('已进入修改模式');
+}
+
+function cancelEditRecord() {
+    editingRecordId = null;
+    document.getElementById('edit-record-type').value = '';
+    
+    // Reset Purchase Form
+    document.getElementById('r-weight').value=''; document.getElementById('r-price').value=''; document.getElementById('r-amount').value=''; document.getElementById('r-actual-amount').value=''; document.getElementById('r-remark').value=''; document.getElementById('r-farmer').value = '';
+    document.getElementById('btn-submit-purchase').innerText = '✅ 确认记录收货'; document.getElementById('btn-submit-purchase').style.background = 'var(--primary)';
+    document.getElementById('btn-cancel-purchase').style.display = 'none'; document.getElementById('record-edit-badge').style.display = 'none';
+    
+    // Reset Dispatch Form
+    document.getElementById('d-send').value=''; document.getElementById('d-settle-w').value=''; document.getElementById('d-settle-price').value=''; document.getElementById('d-settle-amt').value=''; document.getElementById('d-actual-amt').value=''; document.getElementById('d-remark').value='';
+    document.getElementById('btn-submit-dispatch').innerText = '📦 确认发车交货'; document.getElementById('btn-submit-dispatch').style.background = 'var(--primary)';
+    document.getElementById('btn-cancel-dispatch').style.display = 'none'; document.getElementById('dispatch-edit-badge').style.display = 'none';
+    
+    // Reset Expense Form
+    document.getElementById('e-amount').value=''; document.getElementById('e-remark').value=''; if(document.getElementById('e-custom-cat')) document.getElementById('e-custom-cat').value='';
+    document.getElementById('btn-submit-expense').innerText = '➖ 记入杂费'; document.getElementById('btn-submit-expense').style.background = 'var(--warning)';
+    document.getElementById('btn-cancel-expense').style.display = 'none'; document.getElementById('expense-edit-badge').style.display = 'none';
+}
+
+// ========== LEDGER CALC & RENDER ==========
+function getFarmerBalance(fId) {
+  const payments = DB.payments.filter(p => p.farmerId === fId).reduce((s,x)=>s+x.amount, 0);
+  const owes = DB.purchases.filter(p => p.farmerId === fId && p.payType === 'credit').reduce((s,x)=>s+x.amount, 0);
+  const deducted = DB.purchases.filter(p => p.farmerId === fId && p.payType === 'deposit').reduce((s,x)=>s+x.amount, 0);
+  return payments - owes - deducted;
+}
+function getBuyerBalance(bId) {
+  const deliveries = DB.deliveries.filter(d => d.buyerId === bId).reduce((s,x)=>s+x.amount, 0);
+  const receipts = DB.receipts.filter(r => r.buyerId === bId).reduce((s,x)=>s+x.amount, 0);
+  return deliveries - receipts;
+}
+
+function renderLedger() {
+  let oweTotal = 0;
+  const fList = [...DB.farmers].sort((a,b)=>a.name.localeCompare(b.name,'zh-Hans-CN')).map(f => {
+    const bal = getFarmerBalance(f.id);
+    if(bal < 0) oweTotal += Math.abs(bal);
+    return `<li class="list-item" style="padding:16px 0;">
+      <div class="list-row">
+        <div>
+            <div class="list-main">👤 ${f.name} ${f.phone ? `<span style="font-size:0.75rem;color:#888;">${f.phone}</span>`:''}</div>
+            <div class="list-sub" style="cursor:pointer;" onclick="toggleFarmerDetail('${f.id}')">当前账面 <span style="color:var(--primary);">🔽 展开明细</span></div>
+        </div>
+        <div style="text-align:right;">
+          <div class="tag ${bal<0?'tag-red':bal>0?'tag-green':'tag-gray'}" style="font-size:0.9rem;padding:4px 8px;margin-bottom:6px;">${bal<0?'欠款':'定金'}: ¥${Math.abs(bal).toFixed(2)}</div>
+          <button class="btn btn-primary btn-sm" style="background:#1d6fa4;" onclick="openPaymentSheet('${f.id}','${f.name}')">付欠款/定金</button>
+        </div>
+      </div>
+      <div id="farmer-detail-${f.id}" style="display:none; margin-top:12px; background:#fafafa; border-radius:8px; padding:10px; border:1px solid #eee;">
+          <div style="font-size:0.8rem; font-weight:bold; color:var(--text-sub); margin-bottom:6px;">未结清的历史赊账单：</div>
+          ${DB.purchases.filter(p => p.farmerId === f.id && p.payType === 'credit').sort((a,b)=>b.ts-a.ts).map(p => `
+              <div style="display:flex; justify-content:space-between; font-size:0.85rem; border-bottom:1px dashed #ddd; padding:4px 0;">
+                  <span>${p.date} (${p.weight}斤)</span><span style="color:var(--danger);">-¥${p.amount.toFixed(2)}</span>
+              </div>
+          `).join('') || '<div style="font-size:0.8rem; color:#999;">无挂账</div>'}
+      </div>
+    </li>`;
+  }).join('');
+  document.getElementById('farmer-ledger-list').innerHTML = fList || '<div class="empty">暂无档案</div>';
+  document.getElementById('farmer-owe-total').textContent = `¥ ${oweTotal.toFixed(2)}`;
+
+  let bOweTotal = 0;
+  const bList = DB.buyers.map(b => {
+    const bal = getBuyerBalance(b.id);
+    bOweTotal += bal;
+    return `<li class="list-item" style="padding:16px 0;">
+      <div class="list-row">
+        <div><div class="list-main">🏢 ${b.name}</div></div>
+        <div style="text-align:right;"><div style="font-weight:900;color:var(--warning);font-size:1.1rem;">待收 ¥${Math.max(0, bal).toFixed(2)}</div></div>
+      </div>
+    </li>`;
+  }).join('');
+  document.getElementById('buyer-ledger-list').innerHTML = bList || '<div class="empty">暂无档案</div>';
+  document.getElementById('buyer-owe-total').textContent = `¥ ${Math.max(0, bOweTotal).toFixed(2)}`;
+}
+
+function toggleFarmerDetail(id) {
+    const el = document.getElementById('farmer-detail-' + id);
+    if(el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function openPaymentSheet(fid, fname) {
+  document.getElementById('sheet-title').textContent = `向 ${fname} 付款`;
+  document.getElementById('sheet-body').innerHTML = `
+    <div class="form-group"><label class="form-label">付款日期</label><input type="date" class="form-input" id="pay-date" value="${todayStr()}"></div>
+    <div class="form-group"><label class="form-label">金额 (元)</label><input type="number" inputmode="decimal" class="form-input" id="pay-amt" placeholder="输入付给散户的金额"></div>
+    <div class="form-group"><label class="form-label">备注</label><input type="text" class="form-input" id="pay-remark" placeholder="如:结清尾款"></div>
+    <button class="btn btn-primary" style="margin-top:20px;" onclick="submitPayment('${fid}', '${fname}')">确认付款</button>
+  `;
+  document.getElementById('overlay').classList.add('show'); document.getElementById('sheet-modal').classList.add('show');
+}
+function closeSheet() { document.getElementById('overlay').classList.remove('show'); document.getElementById('sheet-modal').classList.remove('show'); }
+
+function submitPayment(fid, fname) {
+  const d = document.getElementById('pay-date').value, amt = parseFloat(document.getElementById('pay-amt').value), rem = document.getElementById('pay-remark').value.trim();
+  if(!d || !amt) return showToast('请填写金额', 'error');
+  DB.payments.push({ id:uid(), date:d, farmerId:fid, farmerName:fname, amount:amt, remark:rem, ts:getTs(d) });
+  closeSheet(); syncAfterChange(); showToast('✅ 付款已入账');
+}
+
+// ========== ECHARTS ENGINE (优化点 3 空状态保护) ==========
+function initECharts() {
+    if (typeof echarts === 'undefined') return false;
+    const chartIds = ['chart-profit', 'chart-composition', 'chart-farmer', 'chart-price', 'chart-loss', 'chart-ar', 'chart-expense'];
+    chartIds.forEach(id => { const dom = document.getElementById(id); if (dom && !charts[id]) charts[id] = echarts.init(dom); });
+    return true;
+}
+
+function updateCharts(purchases, deliveries, expenses, receipts, startDate, endDate) {
+    if (!initECharts()) return;
+    
+    const dates = [];
+    const [sy, sm, sd] = startDate.split('-'); let curr = new Date(sy, sm-1, sd);
+    const [ey, em, ed] = endDate.split('-'); const stop = new Date(ey, em-1, ed);
+    while (curr <= stop) { dates.push(`${curr.getFullYear()}-${p2(curr.getMonth()+1)}-${p2(curr.getDate())}`); curr.setDate(curr.getDate() + 1); }
+    
+    const daily = {};
+    const getDaily = (d) => {
+        if(!daily[d]) { daily[d] = { income:0, cost:0, exp:0, buyW:0, sellW:0, anjinW:0 }; if(!dates.includes(d)) dates.push(d); }
+        return daily[d];
+    };
+
+    purchases.forEach(p => { getDaily(p.date).cost += p.amount; getDaily(p.date).buyW += p.weight; });
+    deliveries.forEach(d => { getDaily(d.date).income += d.amount; getDaily(d.date).sellW += d.sendWeight; getDaily(d.date).anjinW += d.settleWeight; });
+    expenses.forEach(e => { getDaily(e.date).exp += e.amount; });
+
+    dates.sort();
+    const shortDates = dates.map(d => d.substring(5));
+    const netProfits = dates.map(d => (daily[d].income - daily[d].cost - daily[d].exp).toFixed(2));
+    const grossProfits = dates.map(d => (daily[d].income - daily[d].cost).toFixed(2));
+    const costsArr = dates.map(d => daily[d].cost.toFixed(2));
+    const expsArr = dates.map(d => daily[d].exp.toFixed(2));
+
+    const isEmptyData = purchases.length === 0 && deliveries.length === 0 && expenses.length === 0;
+
+    const baseOption = { title: { show: isEmptyData, text: '该周期暂无数据', left: 'center', top: 'center', textStyle: { color: '#999', fontSize: 14, fontWeight: 'normal' } } };
+
+    charts['chart-profit'].setOption({
+        ...baseOption,
+        tooltip: { trigger: 'axis' }, legend: { show: !isEmptyData, data: ['账面毛利润', '账面净利润'], bottom: 0 },
+        grid: { left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true },
+        xAxis: { type: 'category', data: shortDates }, yAxis: { type: 'value' },
+        series: isEmptyData ? [] : [{ name: '账面毛利润', type: 'line', data: grossProfits, color: '#FF6B35', smooth: true },
+                 { name: '账面净利润', type: 'line', data: netProfits, color: '#1a8a4a', smooth: true, areaStyle: { opacity: 0.1 } }]
+    }, true);
+
+    charts['chart-composition'].setOption({
+        ...baseOption,
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } }, legend: { show: !isEmptyData, data: ['采购成本', '杂费开支'], bottom: 0 },
+        grid: { left: '3%', right: '4%', bottom: '15%', top: '10%', containLabel: true },
+        xAxis: { type: 'category', data: shortDates }, yAxis: { type: 'value' },
+        series: isEmptyData ? [] : [{ name: '采购成本', type: 'bar', stack: 'total', data: costsArr, color: '#c0392b' }, { name: '杂费开支', type: 'bar', stack: 'total', data: expsArr, color: '#d97706' }]
+    }, true);
+
+    const fWeights = {}; purchases.forEach(p => { fWeights[p.farmerName] = (fWeights[p.farmerName]||0) + p.weight; });
+    const isFarmerEmpty = Object.keys(fWeights).length === 0;
+    charts['chart-farmer'].setOption({
+        title: { text: isFarmerEmpty ? '暂无供货数据' : '养殖户供货占比', left: 'center', top: isFarmerEmpty ? 'center' : 'top', textStyle: { fontSize: 14, color: isFarmerEmpty ? '#999' : '#333' } },
+        tooltip: { trigger: 'item', formatter: '{b}: {c}斤 ({d}%)' },
+        series: isFarmerEmpty ? [] : [{ type: 'pie', radius: '50%', center: ['50%', '55%'], data: Object.keys(fWeights).map(k => ({ name: k, value: fWeights[k].toFixed(0) })) }]
+    }, true);
+
+    const avgPrices = dates.map(d => daily[d].buyW > 0 ? (daily[d].cost / daily[d].buyW).toFixed(2) : null);
+    charts['chart-price'].setOption({
+        ...baseOption, title: { text: isEmptyData ? '暂无均价数据' : '采购均价走势', left: 'center', textStyle: { fontSize: 14, color: isEmptyData?'#999':'#333' } }, tooltip: { trigger: 'axis' },
+        grid: { left: '3%', right: '4%', bottom: '5%', top: '25%', containLabel: true },
+        xAxis: { type: 'category', data: shortDates }, yAxis: { type: 'value', min: 'dataMin' },
+        series: isEmptyData ? [] : [{ name: '均价', type: 'line', data: avgPrices, color: '#D4450C', connectNulls: true }]
+    }, true);
+
+    const lossRates = dates.map(d => daily[d].sellW > 0 ? ((daily[d].sellW - daily[d].anjinW) / daily[d].sellW * 100).toFixed(1) : null);
+    charts['chart-loss'].setOption({
+        ...baseOption, title: { text: deliveries.length===0 ? '暂无发车数据' : '大厂交货损耗率 (%)', left: 'center', textStyle: { fontSize: 14, color: deliveries.length===0?'#999':'#333' } }, tooltip: { trigger: 'axis' },
+        grid: { left: '3%', right: '4%', bottom: '5%', top: '25%', containLabel: true },
+        xAxis: { type: 'category', data: shortDates }, yAxis: { type: 'value' },
+        series: deliveries.length===0 ? [] : [{ name: '损耗率', type: 'line', data: lossRates, color: '#c0392b', areaStyle: { opacity: 0.1 }, connectNulls: true }]
+    }, true);
+
+    const incomeTotal = deliveries.reduce((s,d)=>s+d.amount, 0); const receiptTotal = receipts.reduce((s,r)=>s+r.amount, 0);
+    charts['chart-ar'].setOption({
+        title: { text: '期间交货应收 vs 期间实际回款', left: 'center', textStyle: { fontSize: 14 } },
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        grid: { left: '3%', right: '4%', bottom: '5%', top: '25%', containLabel: true },
+        xAxis: { type: 'value' }, yAxis: { type: 'category', data: ['资金总盘'] },
+        series: [{ name: '交货应收', type: 'bar', data: [incomeTotal.toFixed(2)], color: '#f39c12' }, { name: '实际回款', type: 'bar', data: [receiptTotal.toFixed(2)], color: '#27ae60' }]
+    }, true);
+
+    const expMap = {}; expenses.forEach(e => { expMap[e.category] = (expMap[e.category]||0) + e.amount; });
+    const isExpEmpty = Object.keys(expMap).length === 0;
+    charts['chart-expense'].setOption({
+        title: { text: isExpEmpty ? '暂无杂费数据' : '杂费分类占比', left: 'center', top: isExpEmpty ? 'center' : 'top', textStyle: { fontSize: 14, color: isExpEmpty?'#999':'#333' } },
+        tooltip: { trigger: 'item', formatter: '{b}: ¥{c} ({d}%)' },
+        series: isExpEmpty ? [] : [{ type: 'pie', radius: ['40%', '70%'], center: ['50%', '55%'], data: Object.keys(expMap).map(k => ({ name: k, value: expMap[k].toFixed(2) })) }]
+    }, true);
+}
+
+// ========== DATA VIEWS RENDER ==========
+function setRange(mode) {
+  document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('active')); 
+  document.querySelectorAll(`.date-btn[data-mode="${mode}"]`).forEach(b => b.classList.add('active'));
+
+  const d = new Date(), fmt = x => `${x.getFullYear()}-${p2(x.getMonth()+1)}-${p2(x.getDate())}`;
+  globalEnd = fmt(d); 
+  if(mode==='today') globalStart = fmt(d);
+  else if(mode==='week') { const s = new Date(d); s.setDate(d.getDate() - (d.getDay()||7) + 1); globalStart = fmt(s); }
+  else if(mode==='month') globalStart = fmt(new Date(d.getFullYear(), d.getMonth(), 1));
+  
+  updateDateInputs();
+  renderDataViews();
+}
+
+function onDateChange() {
+  const isAna = document.getElementById('view-analysis').classList.contains('active');
+  if (isAna) {
+      globalStart = document.getElementById('date-start-ana').value;
+      globalEnd = document.getElementById('date-end-ana').value;
+  } else {
+      globalStart = document.getElementById('date-start-det').value;
+      globalEnd = document.getElementById('date-end-det').value;
+  }
+  updateDateInputs();
+  renderDataViews();
+}
+
+function updateDateInputs() {
+    ['date-start-det', 'date-start-ana'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).value = globalStart; });
+    ['date-end-det', 'date-end-ana'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).value = globalEnd; });
+}
+
+function renderDataViews() {
+  if(!globalStart || !globalEnd) return;
+  const inR = (d) => d >= globalStart && d <= globalEnd;
+  
+  const p = DB.purchases.filter(x => inR(x.date)), d = DB.deliveries.filter(x => inR(x.date)), e = DB.expenses.filter(x => inR(x.date)), rec = DB.receipts.filter(x => inR(x.date)), pay = DB.payments.filter(x => inR(x.date));
+
+  try {
+      const cost = p.reduce((s,x)=>s+x.amount, 0), income = d.reduce((s,x)=>s+x.amount, 0), exp = e.reduce((s,x)=>s+x.amount, 0);
+      const sendW = d.reduce((s,x)=>s+x.sendWeight, 0), settW = d.reduce((s,x)=>s+x.settleWeight, 0);
+      
+      document.getElementById('d-profit').textContent = fmtMoney(income - cost - exp);
+      document.getElementById('d-cost').textContent = fmtMoney(cost); document.getElementById('d-buy-w').textContent = `${p.reduce((s,x)=>s+x.weight, 0).toFixed(1)} 斤`;
+      document.getElementById('d-income').textContent = fmtMoney(income); document.getElementById('d-sell-w').textContent = `${sendW.toFixed(1)} 斤`;
+      document.getElementById('d-expense').textContent = fmtMoney(exp);
+      document.getElementById('d-loss').textContent = sendW > 0 ? ((sendW - settW) / sendW * 100).toFixed(1) + '%' : '—';
+
+      const all = [...p.map(x=>({...x, _t:'p'})), ...d.map(x=>({...x, _t:'d'})), ...e.map(x=>({...x, _t:'e'})), ...pay.map(x=>({...x, _t:'pay'})), ...rec.map(x=>({...x, _t:'rec'}))].sort((a,b)=>b.ts-a.ts);
+      const list = document.getElementById('history-list');
+      if(!all.length) {
+          list.innerHTML = '<div class="empty">该时间段内无明细记录</div>';
+      } else {
+          list.innerHTML = all.map(x => {
+            let title='', amt='', sub='';
+            const timeStr = new Date(x.ts).toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
+            
+            if(x._t === 'p') { 
+                title = `📥 收购 ${x.farmerName}`; 
+                amt = `<span class="c-red">-¥${x.amount.toFixed(2)}</span>`; 
+                const calcAmtValue = x.calcAmount || (x.weight * x.price);
+                const calcStr = calcAmtValue && calcAmtValue !== x.amount ? ` (应付:¥${calcAmtValue.toFixed(2)})` : '';
+                sub = `${timeStr} | ${x.weight}斤 @ ¥${x.price}${calcStr}`; 
+            }
+            if(x._t === 'd') { 
+                title = `🚚 交货给 ${x.buyerName}`; 
+                amt = `<span class="c-green">+¥${x.amount.toFixed(2)}</span>`; 
+                const priceStr = x.settlePrice ? ` @ ¥${x.settlePrice}` : '';
+                const calcAmtValue = x.calcAmount || (x.settleWeight * x.settlePrice);
+                const calcStr = calcAmtValue && calcAmtValue !== x.amount ? ` (应收:¥${calcAmtValue.toFixed(2)})` : '';
+                sub = `${timeStr} | 发${x.sendWeight}斤 结${x.settleWeight}斤${priceStr}${calcStr}`; 
+            }
+            if(x._t === 'e') { title = `💸 支出：${x.category}`; amt = `<span class="c-orange">-¥${x.amount.toFixed(2)}</span>`; sub = `${timeStr}`; }
+            if(x._t === 'pay') { title = `🤝 付款给 ${x.farmerName}`; amt = `<span class="c-red">-¥${x.amount.toFixed(2)}</span>`; sub = `${timeStr}`; }
+            if(x._t === 'rec') { title = `💰 收到 ${x.buyerName} 货款`; amt = `<span class="c-green">+¥${x.amount.toFixed(2)}</span>`; sub = `${timeStr}`; }
+            
+            return `<li class="list-item"><div class="list-row"><div><div class="list-main">${title}</div><div class="list-sub">${sub}${x.remark?' · '+x.remark:''}</div></div>
+                    <div style="display:flex;flex-direction:column;align-items:flex-end;">
+                        <div style="font-weight:900;font-size:1.1rem;margin-bottom:4px;">${amt}</div>
+                        <div style="display:flex; gap:6px;"><button class="btn btn-ghost btn-sm" style="color:var(--primary); padding:4px 10px;" onclick="editRecord('${x._t}','${x.id}')">修改</button> <button class="btn btn-ghost btn-sm" style="padding:4px 10px;" onclick="delH('${x._t}','${x.id}')">撤销</button></div>
+                    </div></div></li>`;
+          }).join('');
+      }
+  } catch(e) {}
+
+  try { updateCharts(p, d, e, rec, globalStart, globalEnd); } catch(e) {}
+}
+
+function delH(t, id) { 
+    // 优化点 4：强力警告，防止删除产生孤立付款记录
+    if (t === 'p') {
+        const p = DB.purchases.find(x => x.id === id);
+        if (p && p.payType === 'credit') {
+            const hasPayments = DB.payments.some(pay => pay.farmerId === p.farmerId);
+            if (hasPayments && !confirm(`⚠️ 警告：该散户有过【付款记录】。\n删除此赊账单后，会导致其账面余额变为正数（预付定金）。\n\n您确定要撤销吗？`)) return;
+        }
+    }
+    
+    if(!confirm('撤销操作不可恢复，确认？')) return; 
+    
+    if(t==='p') DB.purchases = DB.purchases.filter(x=>x.id!==id);
+    else if(t==='d') DB.deliveries = DB.deliveries.filter(x=>x.id!==id);
+    else if(t==='e') DB.expenses = DB.expenses.filter(x=>x.id!==id);
+    else if(t==='pay') DB.payments = DB.payments.filter(x=>x.id!==id);
+    else if(t==='rec') DB.receipts = DB.receipts.filter(x=>x.id!==id);
+    syncAfterChange(); showToast('已撤销'); 
+}
+function renderAll() { renderSettings(); renderLedger(); renderDataViews(); }
+
+// ========== EXPORT EXCEL ==========
+function exportExcel() {
+  if(typeof XLSX === 'undefined') return showToast('网络未加载组件，请稍后再试', 'error');
+  const wb = XLSX.utils.book_new();
+  const format = (data, headers, mapFn) => { const aoa = [headers]; data.forEach(x => aoa.push(mapFn(x))); return XLSX.utils.aoa_to_sheet(aoa); };
+  
+  XLSX.utils.book_append_sheet(wb, format(DB.purchases, ['日期','散户','重量(斤)','单价(元)','账面应付(元)','实际实付(元)','支付方式','备注'], x=>[x.date, x.farmerName, x.weight, x.price, x.calcAmount || (x.weight*x.price), x.amount, {cash:'现结',credit:'赊账',deposit:'扣定金'}[x.payType]||x.payType, x.remark]), '采购记录');
+  XLSX.utils.book_append_sheet(wb, format(DB.deliveries, ['日期','采购商','发出重量(斤)','结算重量(斤)','损耗率','结算单价(元)','账面应收(元)','实际实收(元)','备注'], x=>[x.date, x.buyerName, x.sendWeight, x.settleWeight, ((x.sendWeight-x.settleWeight)/x.sendWeight).toFixed(3), x.settlePrice||'', x.calcAmount || (x.settleWeight*x.settlePrice), x.amount, x.remark]), '交货记录');
+  XLSX.utils.book_append_sheet(wb, format(DB.expenses, ['日期','费用类别','金额(元)','备注'], x=>[x.date, x.category, x.amount, x.remark]), '杂费支出');
+  XLSX.utils.book_append_sheet(wb, format([...DB.payments, ...DB.receipts].sort((a,b)=>a.ts-b.ts), ['日期','类型','对象','金额(元)','备注'], x=>[x.date, x.farmerName?'向散户付款':'收采购商货款', x.farmerName||x.buyerName, x.amount, x.remark]), '资金流水');
+  
+  XLSX.writeFile(wb, `小龙虾账本_${todayStr()}.xlsx`); showToast('✅ 导出成功');
+}
+</script>
+</body>
+</html>
