@@ -1,6 +1,6 @@
 # 账务 · Ledger
 
-视觉优先的私人财务分析工作台。纯静态部署、无第三方脚本、无后台服务。
+视觉优先的私人财务分析工作台。2026.11 浅色视觉版以暖白底色、翡翠绿与湖蓝为主，桌面与手机均重新优化。纯静态部署、无第三方脚本、无后台服务。
 
 ## 隐私设计
 
@@ -22,8 +22,12 @@
 
 ## 本地开发
 
-静态网页无构建依赖，在仓库目录执行 `python3 -m http.server 8080`，然后访问 `http://localhost:8080`。也可把 `index.html`、`styles.css`、`app.js`、`favicon.svg` 和 `data.vault` 一并保留在本地，使用静态 HTTP 服务器运行。
+静态网页无构建依赖，在仓库目录执行 `python3 -m http.server 8080`，然后访问 `http://localhost:8080`。也可把 `index.html`、`styles.css`、`light-theme.css`、`app.js`、`favicon.svg` 和 `data.vault` 一并保留在本地，使用静态 HTTP 服务器运行。
 
 ## 部署
 
 推送到 `main` 后，仓库内的 GitHub Actions 工作流会将根目录部署到 GitHub Pages。必要时在仓库设置 `Settings → Pages → Build and deployment → Source: GitHub Actions` 启用。注意：任何能打开网站的人都能获取**加密**数据文件；保密性依赖独立密钥强度，网站本身并不使用账号登录。
+
+## 外观
+
+`light-theme.css` 在原有版式之上重构了浅色视觉系统和响应式阅读体验，保留了既有的数据处理、密文账本与交互功能。未来若调整主色和留白，请优先修改这个文件。
