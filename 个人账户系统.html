@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f7f9f6">
+  <meta name="description" content="仅在本地解密的个人财务分析与预算管理工作台">
+  <title>个人账户系统</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="light-theme.css">
+</head>
+<body>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="unlock-screen" class="unlock-screen">
+    <div class="unlock-glow"></div>
+    <div class="unlock-top"><span class="brand-mini"><span class="brand-mark">◈</span> LEDGER<span class="brand-dot">.</span></span><span class="encrypted"><i></i> 端侧加密 · AES-256-GCM</span></div>
+    <div class="unlock-center">
+      <div class="unlock-art" aria-hidden="true"><div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><div class="orbit orbit-c"></div><div class="orbit-core">◈</div><div class="orbit-point p1"></div><div class="orbit-point p2"></div></div>
+      <p class="eyebrow">PRIVATE FINANCE / 2025—2026</p>
+      <h1>让每一笔账，<br><span>都变得清晰。</span></h1>
+      <p class="unlock-desc">一年财务记录，已经整合在加密账本中。数据只在当前浏览器解锁，不上传服务器。</p>
+      <form id="unlock-form" class="unlock-form"><label for="vault-pass">账本解锁密钥</label><div class="password-line"><input id="vault-pass" type="password" spellcheck="false" autocomplete="off" placeholder="输入你的独立密钥" required><button id="unlock-btn" type="submit">解锁账本 <span>↗</span></button></div></form>
+      <p id="unlock-hint" class="hint">密钥不保存在代码仓库、网址或浏览器中。</p>
+      <div class="unlock-tools"><label class="link-label">从本地选择加密账本 <input type="file" id="vault-file" accept=".vault,.json,application/json" hidden></label><span>·</span><a href="https://github.com/nekosense-i/zhangwu" target="_blank" rel="noopener">查看源代码 ↗</a></div>
+    </div>
+    <div class="unlock-bottom"><span>LOCAL-FIRST PERSONAL FINANCE</span><span>你的财务，只属于你。</span></div>
+  </div>
+
+  <div id="workspace" class="workspace hidden">
+    <aside class="sidebar">
+      <div class="side-brand"><span class="brand-logo">◈</span><div><b>账务<span class="brand-dot">.</span></b><small>PERSONAL FINANCE</small></div></div>
+      <p class="nav-label">工作空间</p>
+      <nav id="main-nav" aria-label="主要导航">
+        <button data-view="overview" class="nav-link active"><span>◫</span> 总览 <em>01</em></button>
+        <button data-view="trends" class="nav-link"><span>⌁</span> 收支趋势 <em>02</em></button>
+        <button data-view="categories" class="nav-link"><span>◈</span> 消费洞察 <em>03</em></button>
+        <button data-view="cards" class="nav-link"><span>▣</span> 信用卡 <em>04</em></button>
+        <button data-view="transactions" class="nav-link"><span>☷</span> 交易检索 <em>05</em></button>
+        <button data-view="audit" class="nav-link"><span>◎</span> 待核对 <em id="audit-count">—</em></button>
+      </nav>
+      <div class="side-bottom">
+        <div class="side-vault"><div class="vault-symbol">♧</div><b>加密账本</b><span>离线解密 · 无外部依赖</span><small><span class="green-dot"></span> 已在本机解锁</small></div>
+        <button id="lock-now" class="side-text-btn">↶　锁定账本</button>
+      </div>
+    </aside>
+
+    <div class="main-wrap">
+      <header class="topbar"><div class="breadcrumb"><span>工作台</span><span class="crumb-sep">/</span><b id="crumb-current">财务总览</b></div><div class="top-actions"><div class="period-picker"><span>▦</span><select id="period-select" aria-label="选择统计时间"><option value="all">完整时间段</option><option value="2025">2025 年</option><option value="2026">2026 年</option></select></div><button id="mask-values" class="icon-btn" title="隐藏 / 显示金额" aria-label="隐藏金额">◉</button><button id="backup-btn" class="icon-btn" title="下载加密备份" aria-label="下载备份">⇩</button><button id="new-transaction" class="primary-btn"><span>＋</span> 记一笔</button></div></header>
+      <main class="content">
+        <div class="section-head"><div><div class="eyebrow accent">PERSONAL FINANCE · MONEY IN FOCUS <span class="accent-dash"></span> <span id="coverage-label">2025.11 — 2026.11</span></div><h1 id="page-title">财务总览<span class="title-end">.</span></h1><p id="page-subtitle">看清每一笔钱的流向，掌握更从容的生活节奏。</p></div><div class="data-chip"><span class="pulse-dot"></span><span id="data-chip-text">数据已载入 · 截至 2026.11.12</span></div></div>
+
+        <section class="view" id="view-overview">
+          <div class="hero-row"><div class="hero-card"><div class="hero-top"><span class="label-overline">已识别消费净额 <span class="info-dot" title="扣除已匹配重复交易和退款；不包括待核金融扣款、转账与分期本金">ⓘ</span></span><span class="hero-tag">近 13 个自然月 · 首尾不完整</span></div><div class="hero-value sensitive" id="total-expense">¥—</div><div class="hero-lower"><span id="expense-summary">跨渠道去重后消费</span><span class="hero-wave">⌁</span></div><svg class="hero-spark" id="hero-spark" viewBox="0 0 420 94" preserveAspectRatio="none" aria-hidden="true"></svg></div>
+            <div class="mini-kpis"><div class="kpi-box"><div class="metric-icon green">↙</div><div><span class="metric-label">明确代发工资</span><div class="metric-number sensitive" id="total-salary">—</div><small id="salary-foot">银行代发工资</small></div></div><div class="kpi-box"><div class="metric-icon cyan">◉</div><div><span class="metric-label">月均可识别消费</span><div class="metric-number sensitive" id="avg-expense">—</div><small>仅按完整自然月计算</small></div></div><div class="kpi-box"><div class="metric-icon amber">◎</div><div><span class="metric-label">尚待核对</span><div class="metric-number sensitive" id="review-total">—</div><small>金融扣款及个人转账</small></div></div></div>
+          </div>
+          <div class="dual-chart"><div class="panel chart-main"><div class="panel-heading"><div><div class="overline">CASH FLOW</div><h2>每月收支脉络</h2><p>消费与银行代发工资的走势</p></div><div class="chart-legend"><span><i class="legend-dot blue"></i>净消费</span><span><i class="legend-dot mint"></i>工资</span></div></div><div id="overview-line" class="chart-stage"></div><div id="hover-report" class="chart-caption">点击图上的月份，查看当月交易</div></div>
+            <div class="panel category-panel"><div class="panel-heading"><div><div class="overline">SPENDING MIX</div><h2>钱花在了哪里</h2><p>正向消费的分类结构 · 退款另外冲减</p></div><button class="text-action" data-go="categories">深入查看 ↗</button></div><div class="donut-area"><div id="category-donut" class="donut-chart"></div><div id="category-legend" class="donut-legend"></div></div><p id="category-refunds-note" class="chart-caption"></p></div></div>
+          <div class="triple"><div class="panel"><div class="panel-heading"><div><div class="overline">PAYMENT CHANNELS</div><h2>消费渠道</h2><p>已计入消费的主要交易来源</p></div></div><div id="channel-bars" class="bars-block"></div></div><div class="panel"><div class="panel-heading"><div><div class="overline">TOP MERCHANTS</div><h2>常见消费商户</h2><p>点击商户，直达对应交易</p></div></div><div id="merchant-bars" class="bars-block"></div></div><div class="panel insight-panel"><div class="panel-heading"><div><div class="overline">QUICK INSIGHTS</div><h2>这份账本告诉你</h2><p>用数据描述，而非推测</p></div></div><div id="insight-notes" class="insight-list"></div></div></div>
+          <div class="panel calendar-panel"><div class="panel-heading"><div><div class="overline">DAILY ACTIVITY</div><h2>每一天的消费强度</h2><p>按日期聚合，颜色越深代表支出越高；点击方格查看明细</p></div><div class="calendar-key"><span>少</span><i class="heat h0"></i><i class="heat h1"></i><i class="heat h2"></i><i class="heat h3"></i><i class="heat h4"></i><span>多</span></div></div><div id="calendar-heatmap" class="heatmap-wrap"></div></div>
+        </section>
+
+        <section class="view hidden" id="view-trends"><div class="kpi-strip" id="trend-kpis"></div><div class="panel big-panel"><div class="panel-heading"><div><div class="overline">A YEAR IN MOTION</div><h2>收支趋势与差额</h2><p>点击月份聚焦当期，首尾月份仅供参考</p></div><div class="chart-legend"><span><i class="legend-dot blue"></i>消费</span><span><i class="legend-dot mint"></i>工资</span></div></div><div id="trends-chart" class="chart-stage tall"></div></div><div class="panel"><div class="panel-heading"><div><div class="overline">MONTH BY MONTH</div><h2>每月消费分布</h2><p>工资与净消费差额仅作观察，不能认定为真实储蓄</p></div></div><div id="monthly-ledger" class="monthly-cards"></div></div></section>
+
+        <section class="view hidden" id="view-categories"><div class="split-summary"><div class="panel category-large"><div class="panel-heading"><div><div class="overline">SPENDING MIX</div><h2>消费类型全景</h2><p>占比以正向分类消费为分母；退款及冲减单列</p></div><button id="clear-category" class="text-action">清除筛选 ×</button></div><div id="large-donut" class="donut-chart large"></div><div id="large-legend" class="category-pills"></div><p id="large-refunds-note" class="chart-caption"></p></div><div class="panel"><div class="panel-heading"><div><div class="overline">RANKED CATEGORY</div><h2>分类支出排行</h2><p>将所有归类项目放在同一量尺下比较</p></div></div><div id="category-ranking" class="ranking-list"></div></div></div><div class="panel"><div class="panel-heading"><div><div class="overline">PERSISTENCE</div><h2>各月消费构成</h2><p>不同颜色代表不同支出类型，帮助区分一次性支出与习惯性开销</p></div></div><div id="category-month-grid" class="composition-grid"></div></div></section>
+
+        <section class="view hidden" id="view-cards"><div class="kpi-strip" id="card-kpis"></div><div class="panel"><div class="panel-heading"><div><div class="overline">CREDIT CARD CYCLES</div><h2>两类信用卡账户</h2><p>账单应还金额是账务余额，不能直接当作当月消费</p></div></div><div id="card-bills" class="statement-grid"></div></div><div class="split-summary"><div class="panel"><div class="panel-heading"><div><div class="overline">INSTALLMENTS</div><h2>分期相关账务</h2><p>本金、退货冲回与利息分开显示</p></div></div><div id="installments" class="compact-facts"></div></div><div class="panel"><div class="panel-heading"><div><div class="overline">IMPORTANT DISTINCTION</div><h2>计算口径</h2></div></div><div class="explain-list"><p><b>刷卡消费</b>：能证实未在微信/支付宝计入时，补充进入消费净额。</p><p><b>信用卡还款</b>：是清偿负债的资金流转，不再计入消费。</p><p><b>分期本金</b>：独立列示，原始购物及退款需核实，以免重复计算。</p><p><b>未出账交易</b>：截至 2026 年 11 月 12 日可能仍有缺口。</p></div></div></div></section>
+
+        <section class="view hidden" id="view-transactions"><div class="panel"><div class="panel-heading"><div><div class="overline">TRANSACTION EXPLORER</div><h2>交易检索</h2><p>完整原始记录保留，默认只显示筛选结果的前 30 笔</p></div><span class="count-chip" id="tx-count">— 条记录</span></div><div class="filter-bar"><input id="tx-search" type="search" placeholder="搜索商户 / 摘要 / 交易编号…"><select id="tx-category"><option value="all">全部分类</option></select><select id="tx-source"><option value="all">全部渠道</option></select><select id="tx-type"><option value="all">全部交易</option><option value="consumption">已计消费</option><option value="salary">代发工资</option><option value="excluded">资金往来与其他</option></select><button id="tx-reset" class="subtle-btn">清除</button></div><div id="tx-active-filter" class="active-filter"></div><div id="tx-list" class="tx-list"></div><div class="load-row"><button id="tx-more" class="subtle-btn">再显示 30 笔 ↓</button></div></div></section>
+
+        <section class="view hidden" id="view-audit"><div class="audit-intro"><div><span class="overline">VERIFY, DON'T GUESS</span><h2>把不确定的，留给核对。</h2><p>以下金额并未自动算入消费净额。点击交易可以修改分类、写备注，或确认其用途。</p></div><div class="audit-number sensitive" id="audit-value">—</div></div><div class="split-summary"><div class="panel"><div class="panel-heading"><div><h2>待核金融扣款</h2><p>平台扣款、信贷或分期性质尚不明朗</p></div></div><div id="financial-pending" class="audit-items"></div></div><div class="panel"><div class="panel-heading"><div><h2>个人转账与往来</h2><p>转账是否属于生活支出需要按实际用途判断</p></div></div><div id="personal-pending" class="audit-items"></div></div></div><div class="panel"><div class="panel-heading"><div><div><h2>暂未细分的已计消费</h2><p>这一部分已计入消费，只是类别仍需优化</p></div><span id="uncategorized-count" class="count-chip"></span></div><div id="unknown-list" class="audit-items"></div></div></section>
+
+        <footer class="footer"><span>LEDGER <b>◈</b> 数据驻留于浏览器内存 · 加密备份保存在本地</span><span>源数据：微信 / 支付宝 / 招商银行储蓄卡 / 招行信用卡　·　2026.11</span></footer>
+      </main>
+    </div>
+  </div>
+
+  <div id="modal-scrim" class="modal-scrim hidden"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><button id="modal-close" class="modal-close" aria-label="关闭">×</button><p class="overline" id="modal-overline">LEDGER ENTRY</p><h2 id="modal-title">记录一笔交易</h2><form id="entry-form"><input type="hidden" id="entry-id"><label>日期<input type="date" id="entry-date" required></label><label>交易说明<input type="text" id="entry-merchant" maxlength="120" placeholder="例如：超市购物" required></label><div class="two-input"><label>金额（元）<input type="number" id="entry-amount" min="0" step="0.01" required></label><label>类型<select id="entry-kind"><option value="expense">消费</option><option value="salary">工资收入</option><option value="other">资金往来/不计入</option></select></label></div><label>分类<select id="entry-category"></select></label><label>备注（仅保存在加密数据中）<textarea id="entry-note" rows="2" placeholder="可选"></textarea></label><div class="modal-actions"><button type="button" class="subtle-btn" id="entry-cancel">取消</button><button type="submit" class="primary-btn">保存到本地加密账本 ↗</button></div></form></div></div>
+  <script src="app.js" defer></script>
+</body>
+</html>
